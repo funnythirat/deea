@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101a2b">
+  <meta name="scanner-api-base" content="">
   <title>วิถีป้องกันรอบด้าน | Security Scanner</title>
   <style>
     :root {
@@ -138,6 +139,24 @@
     .btn:hover { background: #6ae8d5; }
     .btn:disabled { cursor: wait; opacity: .6; }
     .btn.secondary { color: #d8e2ef; border-color: #34465d; background: #1a2940; }
+    .auth-panel { position: relative; overflow: hidden; margin-bottom: 18px; padding: 0; border-color: #2c4659; }
+    .auth-panel:before { position: absolute; top: -90px; right: -45px; width: 230px; height: 230px; border: 1px solid #40d9c222; border-radius: 50%; box-shadow: 0 0 0 28px #40d9c20b, 0 0 0 58px #40d9c208; content: ""; pointer-events: none; }
+    .auth-content { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .9fr); align-items: center; gap: 28px; padding: 24px; }
+    .auth-copy { max-width: 470px; }
+    .auth-kicker { margin: 0 0 7px; color: var(--cyan); font-size: 10px; font-weight: 750; letter-spacing: 1.5px; }
+    .auth-panel h2 { margin: 0 0 7px; font-size: 20px; }
+    .auth-panel .sub { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.7; }
+    .auth-form { display: grid; gap: 12px; }
+    .auth-form label { display: block; }
+    .auth-form input { display: block; }
+    .auth-form .btn { width: 100%; min-height: 42px; margin-top: 2px; }
+    .auth-message { min-height: 1.5em; margin: 10px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .auth-message.error { color: #ffc0c5; }
+    .auth-message.success { color: var(--green); }
+    .auth-account-ready { display: grid; gap: 12px; padding: 16px; border: 1px solid #2b6557; border-radius: 10px; background: #102b2b; }
+    .auth-account-ready strong { display: block; margin-bottom: 6px; color: var(--green); font-size: 13px; }
+    .auth-account-ready span { color: #b5c8d6; font-size: 11px; overflow-wrap: anywhere; }
+    .auth-warning { margin: 0 24px 22px; }
     .results { display: grid; gap: 9px; margin-top: 18px; }
     .result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 10px; }
     .result-head h3 { margin: 0; font-size: 14px; }
@@ -188,6 +207,19 @@
     .severity-fill.high { background: var(--red); }
     .severity-fill.medium { background: var(--yellow); }
     .severity-fill.low { background: var(--green); }
+    .wifi-summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 16px 0; }
+    .wifi-metric { padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: #101b2b; }
+    .wifi-metric span { display: block; color: var(--muted); font-size: 10px; }
+    .wifi-metric strong { display: block; margin-top: 7px; color: var(--text); font-size: 16px; overflow-wrap: anywhere; }
+    .wifi-signal-track { height: 8px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: #26354a; }
+    .wifi-signal-fill { width: 0; height: 100%; border-radius: inherit; background: var(--green); transition: width .25s ease; }
+    .wifi-signal-fill.medium { background: var(--yellow); }
+    .wifi-signal-fill.low { background: var(--red); }
+    .scan-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+    .scan-metric { padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: #101b2b; }
+    .scan-metric span { display: block; color: var(--muted); font-size: 10px; }
+    .scan-metric strong { display: block; margin-top: 7px; color: var(--text); font-size: 16px; overflow-wrap: anywhere; }
+    .command { display: block; margin: 10px 0; padding: 12px; overflow-wrap: anywhere; border: 1px solid var(--line); border-radius: 8px; color: #c7d8ea; background: #0c1626; font: 11px/1.6 Consolas, monospace; }
     .footer-note { margin-top: 24px; color: #71829a; font-size: 10px; line-height: 1.7; }
     a { color: var(--blue); }
     @media (max-width: 850px) {
@@ -209,7 +241,11 @@
       .quick-actions { grid-template-columns: 1fr; }
       .mode-options { grid-template-columns: 1fr; }
       .system-grid, .engine-grid { grid-template-columns: 1fr; }
+      .wifi-summary { grid-template-columns: repeat(2, 1fr); }
+      .scan-summary { grid-template-columns: repeat(2, 1fr); }
       .action { min-height: 0; }
+      .auth-content { grid-template-columns: 1fr; gap: 18px; padding: 20px; }
+      .auth-warning { margin: 0 20px 20px; }
     }
   </style>
 </head>
@@ -230,6 +266,7 @@
         <button type="button" data-view="website"><span class="nav-icon">⌕</span>ตรวจเว็บไซต์</button>
         <button type="button" data-view="code"><span class="nav-icon">⌘</span>ตรวจโค้ด</button>
         <button type="button" data-view="dependencies"><span class="nav-icon">◇</span>ตรวจแพ็กเกจ</button>
+        <button type="button" data-view="wifi"><span class="nav-icon">⌁</span>ตรวจ Wi-Fi</button>
       </nav>
       <div class="side-note">
         <strong>ใช้กับระบบที่ได้รับอนุญาตเท่านั้น</strong>
@@ -242,6 +279,37 @@
         <div><div class="eyebrow">SECURITY OVERVIEW</div><h1 id="pageTitle">ภาพรวมความปลอดภัย</h1></div>
         <div class="status-pill"><span class="status-dot" id="backendStatusDot" style="background:var(--yellow);box-shadow:none"></span><span id="backendStatusText">กำลังตรวจสอบ Backend...</span></div>
       </header>
+
+      <section class="card auth-panel" aria-labelledby="authHeading">
+        <div class="auth-content">
+          <div class="auth-copy">
+            <p class="auth-kicker">FIREBASE ACCOUNT</p>
+            <h2 id="authHeading">สร้างบัญชี</h2>
+            <p class="sub">สร้างบัญชีเพื่อเริ่มต้นใช้งาน พื้นที่นี้ใช้ Firebase Authentication และไม่ส่งรหัสผ่านไปยังระบบสแกน</p>
+          </div>
+          <div id="authSignedOut">
+            <form id="createAccountForm" class="auth-form">
+              <label for="authEmail">อีเมล
+                <input type="email" id="authEmail" autocomplete="email" placeholder="you@example.com" required>
+              </label>
+              <label for="authPassword">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)
+                <input type="password" id="authPassword" autocomplete="new-password" minlength="6" required>
+              </label>
+              <label for="authPasswordConfirm">ยืนยันรหัสผ่าน
+                <input type="password" id="authPasswordConfirm" autocomplete="new-password" minlength="6" required>
+              </label>
+              <button class="btn" id="createAccountButton" type="submit">สร้างบัญชี</button>
+            </form>
+          </div>
+          <div id="authSignedIn" class="auth-account-ready" hidden>
+            <strong>บัญชี Firebase พร้อมใช้งาน</strong>
+            <span id="authUserEmail"></span>
+            <button class="btn secondary" id="signOutButton" type="button">ออกจากบัญชี</button>
+          </div>
+          <p id="authMessage" class="auth-message" role="status" aria-live="polite">กำลังเชื่อมต่อ Firebase Authentication...</p>
+        </div>
+        <div class="callout auth-warning">บัญชีนี้ใช้สำหรับ Firebase Authentication เท่านั้น ยังไม่เชื่อมกับสิทธิ์ของ FastAPI; backend ต้องตรวจ Firebase ID token ก่อนจึงจะใช้บัญชีนี้ควบคุมการอัปโหลดหรือข้อมูลสแกนได้</div>
+      </section>
 
       <section class="view active" id="view-dashboard">
         <div class="hero">
@@ -278,6 +346,27 @@
             <div class="callout info">การตรวจเว็บไซต์ใช้คำขอ HEAD หนึ่งครั้งเท่านั้น และอาจอ่าน headers ไม่ได้หากเว็บไม่เปิด CORS ส่วนรายละเอียดใบรับรอง TLS ต้องตรวจจาก backend</div>
             <div class="callout">ข้อมูล dependency (ชื่อและเวอร์ชันเท่านั้น) ส่งไปยัง OSV; source code วิเคราะห์ใน browser แต่ไฟล์สแกนไวรัสจะถูกอัปโหลดไปยัง backend เพื่อกักไว้ชั่วคราว</div>
           </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2>สแกนไฟล์จากภาพรวม</h2>
+          <p class="sub">เลือกไฟล์และเริ่มสแกนด้วย ClamAV ได้จากหน้านี้เลย หรือเลือกโหมดเชิงลึกเพื่อเพิ่ม YARA</p>
+          <div class="callout">สแกนได้เฉพาะไฟล์ที่เลือกและต้องเชื่อมต่อ Backend/worker ที่พร้อมใช้งาน ไฟล์จะถูกส่งไปกักไว้ชั่วคราวบนเซิร์ฟเวอร์และไม่ถูกรัน</div>
+          <form id="dashboardVirusScanForm" class="form-grid virus-scan-form" data-results="dashboardVirusScanResults">
+            <label for="dashboardVirusFiles">เลือกไฟล์ (สูงสุด 10 ไฟล์, ไฟล์ละไม่เกิน 20 MiB)
+              <input type="file" id="dashboardVirusFiles" multiple required>
+            </label>
+            <div>
+              <label>โหมดการตรวจ</label>
+              <div class="mode-options" style="margin-top:8px">
+                <label class="mode-option"><input type="radio" name="dashboardVirusMode" value="standard" checked><span><strong>สแกนปกติ</strong><small>ClamAV signature scan รวมการตรวจ archive ตามขีดจำกัดของ engine</small></span></label>
+                <label class="mode-option"><input type="radio" name="dashboardVirusMode" value="deep"><span><strong>สแกนเชิงลึก</strong><small>ClamAV + YARA heuristic scan; ใช้เวลามากขึ้นและอาจแจ้งเตือนผิดพลาด</small></span></label>
+              </div>
+            </div>
+            <label class="checkline"><input type="checkbox" required><span>ฉันมีสิทธิ์ส่งไฟล์นี้ให้ระบบตรวจ และยินยอมให้จัดเก็บชั่วคราวบนเซิร์ฟเวอร์ระหว่างสแกน</span></label>
+            <button class="btn" type="submit">ส่งไฟล์เข้าคิวสแกน</button>
+          </form>
+          <div id="dashboardVirusScanJobs" class="results" aria-live="polite"><div class="empty">ยังไม่มีงานสแกน</div></div>
+          <div id="dashboardVirusScanResults" class="results" aria-live="polite"><div class="empty">ผลและคำแนะนำจะแสดงหลัง worker สแกนเสร็จ</div></div>
         </div>
         <div class="card" style="margin-top:14px">
           <h2>สถานะองค์ประกอบระบบ</h2>
@@ -402,10 +491,37 @@
 
       <section class="view" id="view-virus">
         <div class="card">
+          <h2>สแกนในเครื่อง (ไม่อัปโหลดไฟล์)</h2>
+          <p class="sub">ใช้ Microsoft Defender Antivirus บน Windows ตรวจไฟล์ที่คุณเลือก โดยไฟล์ต้นฉบับไม่ถูกส่งเข้าเว็บไซต์หรือ Backend</p>
+          <div class="callout info">ตัวช่วยทำงานบนเครื่อง Windows ของคุณเอง ใช้ได้เมื่อ Microsoft Defender Antivirus เปิดใช้งานอยู่ ตัวช่วยจะไม่ส่งไฟล์หรือ path ไปยังเซิร์ฟเวอร์ แต่ Defender อาจกักกันหรือลบภัยคุกคามตามการตั้งค่าของ Windows</div>
+          <ol class="sub">
+            <li><a href="./virus-scan.ps1">ดาวน์โหลดตัวช่วยสแกนไวรัสในเครื่อง</a></li>
+            <li>เปิด PowerShell ในโฟลเดอร์ที่ดาวน์โหลด แล้วเรียกคำสั่งด้านล่าง จากนั้นเลือกไฟล์ในหน้าต่างที่เปิดขึ้น</li>
+            <li>เลือกไฟล์รายงานที่ตัวช่วยสร้าง แล้วกดวิเคราะห์เพื่อดูจำนวนไฟล์ ผลตรวจพบ และไฟล์ที่สแกนไม่สำเร็จ</li>
+          </ol>
+          <code class="command">powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\virus-scan.ps1"</code>
+          <form id="localVirusReportForm" class="form-grid">
+            <label for="localVirusReportFile">รายงานจาก Microsoft Defender
+              <input type="file" id="localVirusReportFile" accept=".json,application/json" required>
+            </label>
+            <button class="btn" type="submit">แสดงผลสแกนในเครื่อง</button>
+          </form>
+          <div id="localVirusSummary" class="scan-summary" hidden>
+            <div class="scan-metric"><span>ไฟล์ที่เลือก</span><strong id="localVirusFileCount">0</strong></div>
+            <div class="scan-metric"><span>สแกนสำเร็จ</span><strong id="localVirusCompletedCount">0</strong></div>
+            <div class="scan-metric"><span>สแกนไม่สำเร็จ</span><strong id="localVirusFailedCount">0</strong></div>
+            <div class="scan-metric"><span>รายการตรวจพบ</span><strong id="localVirusThreatCount">0</strong></div>
+            <div class="scan-metric"><span>ความเสี่ยงสูง</span><strong id="localVirusHighCount">0</strong></div>
+            <div class="scan-metric"><span>ความเสี่ยงปานกลาง</span><strong id="localVirusMediumCount">0</strong></div>
+            <div class="scan-metric"><span>ความเสี่ยงต่ำ</span><strong id="localVirusLowCount">0</strong></div>
+          </div>
+          <div id="localVirusScanResults" class="results" aria-live="polite"><div class="empty">ผลการสแกนในเครื่องจะแสดงที่นี่</div></div>
+        </div>
+        <div class="card">
           <h2>สแกนไวรัสและไฟล์ต้องสงสัย</h2>
-          <p class="sub">ส่งไฟล์ที่เลือกเข้า quarantine เพื่อให้ ClamAV ตรวจ signature ใน worker; โหมดลึกจะเพิ่ม YARA heuristic scan พร้อมคำแนะนำหลังตรวจ</p>
-          <div class="callout">ข้อจำกัดของเว็บ: เบราว์เซอร์ไม่อนุญาตให้หน้านี้สแกนทุกไฟล์หรือทุกแอปในเครื่องโดยอัตโนมัติ สแกนได้เฉพาะไฟล์ที่คุณเลือก (สูงสุด 10 ไฟล์ต่อครั้ง, ไฟล์ละไม่เกิน 20 MiB) หากต้องการตรวจทั้งเครื่อง ให้ใช้โปรแกรมป้องกันไวรัสที่ติดตั้งในระบบปฏิบัติการ เลือกเฉพาะไฟล์ที่คุณมีสิทธิ์ตรวจ; ไฟล์ที่เลือกจะถูกส่งไปยัง backend นี้ชั่วคราว ห้ามอัปโหลดไฟล์ที่มีข้อมูลลับ ระบบไม่เปิดหรือรันไฟล์ และจะลบไฟล์ชั่วคราวหลังสแกน</div>
-          <form id="virusScanForm" class="form-grid">
+          <p class="sub">ทางเลือกเพิ่มเติม: ส่งไฟล์ไปให้ ClamAV/YARA ตรวจผ่าน Backend ซึ่งจะอัปโหลดไฟล์ไปกักไว้ชั่วคราวบนเซิร์ฟเวอร์</p>
+          <div class="callout">ถ้าไม่ต้องการอัปโหลดไฟล์ ให้ใช้ส่วน “สแกนในเครื่อง” ด้านบนแทน การสแกนผ่าน Backend ด้านล่างเหมาะเมื่อคุณยินยอมส่งไฟล์ไปตรวจและมีสิทธิ์ในไฟล์นั้น</div>
+          <form id="virusScanForm" class="form-grid virus-scan-form" data-results="virusScanResults">
             <label for="virusFiles">เลือกไฟล์ (สูงสุด 10 ไฟล์, ไฟล์ละไม่เกิน 20 MiB)
               <input type="file" id="virusFiles" multiple required>
             </label>
@@ -427,7 +543,43 @@
           <div id="virusScanResults" class="results" aria-live="polite"><div class="empty">ผลและคำแนะนำจะแสดงหลัง worker สแกนเสร็จ</div></div>
         </div>
       </section>
-      <p class="footer-note">เครื่องมือนี้ช่วยคัดกรองเบื้องต้น ไม่รับประกันว่าจะพบช่องโหว่ทั้งหมด และผล "ไม่พบ" ไม่ได้ยืนยันว่าระบบปลอดภัย ควรใช้เครื่องมือและผู้เชี่ยวชาญเพิ่มเติมก่อนใช้งานจริง</p>
+      <section class="view" id="view-wifi">
+        <div class="card">
+          <h2>ตรวจสอบ Wi-Fi ที่เชื่อมต่ออยู่</h2>
+          <p class="sub">ตัวช่วย Windows อ่านชื่อเครือข่ายที่เชื่อมต่อ, คุณภาพสัญญาณ และชนิดการยืนยันตัวตน/การเข้ารหัสจาก Native Wi-Fi API แล้วบันทึกรายงานไว้ในเครื่อง</p>
+          <div class="callout info">เว็บไม่สามารถอ่านข้อมูล Wi-Fi จากเบราว์เซอร์ได้โดยตรง จึงต้องดาวน์โหลดและเรียกใช้ตัวช่วย Windows ด้วยตนเอง การตรวจนี้อ่านเฉพาะเครือข่ายที่เชื่อมต่ออยู่ ไม่สแกนเครือข่ายรอบข้าง และไม่ส่งรายงานไปยังเซิร์ฟเวอร์</div>
+          <ol class="sub">
+            <li><a href="./wifi-scan.ps1">ดาวน์โหลดตัวช่วยตรวจ Wi-Fi สำหรับ Windows</a></li>
+            <li>เปิด PowerShell ในโฟลเดอร์ที่ดาวน์โหลด แล้วเรียกคำสั่งด้านล่าง (เป็นการอนุญาตเฉพาะการเรียกครั้งนี้) ระบบจะสร้าง <code>wifi-scan.json</code> บน Desktop</li>
+            <li>เลือกไฟล์รายงานด้านล่างเพื่อแสดงระดับสัญญาณและประเมินความเสี่ยง</li>
+          </ol>
+          <code class="command">powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\wifi-scan.ps1"</code>
+          <div class="callout">ผลประเมินดูเฉพาะการตั้งค่าการยืนยันตัวตน/การเข้ารหัสที่ Windows รายงาน ไม่ใช่การยืนยันว่าเครือข่ายปลอดภัยทั้งหมด ความแข็งแรงรหัสผ่าน, WPS, firmware, การตั้งค่า router และอุปกรณ์อื่นในเครือข่ายตรวจไม่ได้จากเครื่องลูกข่าย</div>
+          <form id="wifiScanForm" class="form-grid">
+            <label for="wifiReportFile">รายงานจากตัวช่วย Windows
+              <input type="file" id="wifiReportFile" accept=".json,application/json" required>
+            </label>
+            <button class="btn" type="submit">วิเคราะห์รายงาน Wi-Fi</button>
+          </form>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <h2>ผลการตรวจ</h2>
+          <p class="sub">จำนวนความเสี่ยงคือจำนวนประเด็นที่ตรงกับกฎตรวจ ไม่ใช่เปอร์เซ็นต์โอกาสถูกโจมตี</p>
+          <div id="wifiSummary" class="wifi-summary" hidden>
+            <div class="wifi-metric"><span>สถานะความปลอดภัย</span><strong id="wifiSecurityStatus"></strong></div>
+            <div class="wifi-metric"><span>เครือข่ายที่เชื่อมต่อ</span><strong id="wifiSsid"></strong></div>
+            <div class="wifi-metric"><span>คุณภาพสัญญาณ</span><strong id="wifiSignalText"></strong><div class="wifi-signal-track"><div id="wifiSignalBar" class="wifi-signal-fill"></div></div></div>
+            <div class="wifi-metric"><span>ความเสี่ยงสูง</span><strong id="wifiHighCount">0</strong></div>
+            <div class="wifi-metric"><span>ความเสี่ยงปานกลาง</span><strong id="wifiMediumCount">0</strong></div>
+            <div class="wifi-metric"><span>ความเสี่ยงต่ำ</span><strong id="wifiLowCount">0</strong></div>
+            <div class="wifi-metric"><span>การยืนยันตัวตน</span><strong id="wifiAuthentication"></strong></div>
+            <div class="wifi-metric"><span>การเข้ารหัส</span><strong id="wifiCipher"></strong></div>
+            <div class="wifi-metric"><span>เวลาอ่านข้อมูล</span><strong id="wifiCapturedAt"></strong></div>
+          </div>
+          <div id="wifiResults" class="results" aria-live="polite"><div class="empty">เลือกและวิเคราะห์รายงานจากตัวช่วย Windows เพื่อดูผล</div></div>
+        </div>
+      </section>
+      <p class="footer-note">เครื่องมือนี้ช่วยคัดกรองเบื้องต้น ไม่รับประกันว่าจะพบช่องโหว่ทั้งหมด และผล "ไม่พบ" ไม่ได้ยืนยันว่าระบบปลอดภัย ควรใช้เครื่องมือและผู้เชี่ยวชาญเพิ่มเติมก่อนใช้งานจริง การใช้งานหน้านี้ส่งข้อมูลการเข้าชมพื้นฐานไปยัง Firebase Analytics; ไม่ส่งไฟล์ที่เลือกตรวจ</p>
     </main>
   </div>
 
@@ -450,11 +602,24 @@
       reports: "ประวัติและรายงาน",
       engines: "Scanning Engines",
       virus: "สแกนไวรัส",
+      wifi: "ตรวจสอบ Wi-Fi",
       website: "ตรวจการตั้งค่าเว็บไซต์",
       code: "วิเคราะห์ซอร์สโค้ด",
       dependencies: "ตรวจสอบ Dependency"
     };
     const navButtons = document.querySelectorAll("[data-view]");
+    const configuredApiBase = document.querySelector('meta[name="scanner-api-base"]').content.trim();
+    const isGitHubPages = location.hostname.endsWith(".github.io");
+    const apiBase = configuredApiBase
+      ? new URL(configuredApiBase, location.href).href.replace(/\/+$/, "")
+      : isGitHubPages || location.protocol === "file:"
+        ? null
+        : location.origin;
+
+    function apiUrl(path) {
+      if (!apiBase) return null;
+      return apiBase + "/api/v1/" + path.replace(/^\/+/, "");
+    }
 
     function showView(name) {
       document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === "view-" + name));
@@ -466,6 +631,282 @@
     }
     navButtons.forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
     document.querySelectorAll("[data-go]").forEach((button) => button.addEventListener("click", () => showView(button.dataset.go)));
+
+    document.getElementById("wifiScanForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const output = document.getElementById("wifiResults");
+      const summary = document.getElementById("wifiSummary");
+      const file = document.getElementById("wifiReportFile").files[0];
+      if (!file) return;
+
+      try {
+        if (file.size > 64 * 1024) throw new Error("ไฟล์รายงานมีขนาดเกินกำหนด");
+        const report = JSON.parse(await file.text());
+        if (!report || typeof report !== "object" || Array.isArray(report)) {
+          throw new Error("รูปแบบรายงานไม่ถูกต้องหรือไม่ใช่รายงานจากตัวช่วย Wi-Fi รุ่นที่รองรับ");
+        }
+        const signal = report.signalQualityPercent;
+        if (
+          report.schemaVersion !== 1 ||
+          typeof report.ssid !== "string" ||
+          !report.ssid.trim() ||
+          typeof report.authentication !== "string" ||
+          typeof report.cipher !== "string" ||
+          typeof report.securityEnabled !== "boolean" ||
+          !Number.isInteger(signal) ||
+          signal < 0 ||
+          signal > 100 ||
+          typeof report.capturedAtUtc !== "string" ||
+          Number.isNaN(Date.parse(report.capturedAtUtc))
+        ) {
+          throw new Error("รูปแบบรายงานไม่ถูกต้องหรือไม่ใช่รายงานจากตัวช่วย Wi-Fi รุ่นที่รองรับ");
+        }
+
+        const authentication = report.authentication.toUpperCase();
+        const cipher = report.cipher.toUpperCase();
+        const findings = [];
+        const isOpen = !report.securityEnabled || authentication === "OPEN" || cipher === "NONE";
+        const isLegacy = authentication === "SHARED" ||
+          authentication === "WPA-NONE" ||
+          cipher.startsWith("WEP");
+        if (isOpen) {
+          findings.push({
+            level: "high",
+            title: "เครือข่ายเปิดหรือไม่เข้ารหัส",
+            detail: "ข้อมูลระบุว่าไม่มีการป้องกันระดับ Wi-Fi เพียงพอ ผู้อื่นในระยะสัญญาณอาจดักอ่านหรือปลอมแปลงการเชื่อมต่อได้ ควรตั้งค่า WPA2-AES หรือ WPA3 ที่เราเตอร์"
+          });
+        } else if (isLegacy) {
+          findings.push({
+            level: "high",
+            title: "พบการยืนยันตัวตน/การเข้ารหัสแบบเก่า",
+            detail: "Shared Key, WPA-NONE หรือ WEP มีความปลอดภัยไม่เพียงพอ ควรเปลี่ยนเป็น WPA2-AES หรือ WPA3"
+          });
+        }
+
+        if (!isOpen && !isLegacy) {
+          if (authentication === "WPA" || authentication === "WPA-PSK") {
+            findings.push({
+              level: "medium",
+              title: "ใช้ WPA รุ่นเก่า",
+              detail: "WPA เดิมมีข้อจำกัดด้านความปลอดภัย ควรเปลี่ยนการตั้งค่าเราเตอร์เป็น WPA2-AES หรือ WPA3"
+            });
+          }
+          if (cipher === "TKIP") {
+            findings.push({
+              level: "medium",
+              title: "พบการเข้ารหัส TKIP",
+              detail: "TKIP เป็นวิธีเข้ารหัสรุ่นเก่าที่ไม่แนะนำ ควรใช้ AES/CCMP หรือ GCMP"
+            });
+          }
+        }
+
+        const recognizedAuthentication = [
+          "OPEN",
+          "SHARED",
+          "WPA",
+          "WPA-PSK",
+          "WPA-NONE",
+          "WPA2",
+          "WPA2-PSK",
+          "WPA3",
+          "WPA3-SAE",
+          "WPA3-ENT",
+          "WPA3-ENT-192"
+        ].includes(authentication);
+        const recognizedCipher = [
+          "NONE",
+          "WEP40",
+          "WEP104",
+          "TKIP",
+          "AES-CCMP",
+          "GCMP",
+          "GCMP-256",
+          "CCMP-256",
+          "BIP",
+          "BIP-GMAC-128",
+          "BIP-GMAC-256",
+          "BIP-CMAC-256"
+        ].includes(cipher);
+        const unknownSecurity = authentication.startsWith("UNKNOWN") ||
+          cipher.startsWith("UNKNOWN") ||
+          !recognizedAuthentication ||
+          !recognizedCipher;
+        if (unknownSecurity) {
+          findings.push({
+            level: "info",
+            title: "ข้อมูลความปลอดภัยบางส่วนยังประเมินไม่ได้",
+            detail: "Windows รายงานชนิดการยืนยันตัวตนหรือการเข้ารหัสที่เครื่องมือนี้ไม่รู้จัก จึงไม่สรุปว่าเครือข่ายปลอดภัย"
+          });
+        } else if (!isOpen && !isLegacy && findings.length === 0) {
+          findings.push({
+            level: "info",
+            title: "ไม่พบสัญญาณการตั้งค่าล้าสมัยจากข้อมูลที่อ่านได้",
+            detail: "พบการยืนยันตัวตนและการเข้ารหัสที่รองรับ ไม่ใช่การรับรองความปลอดภัยทั้งหมดของเครือข่าย"
+          });
+        }
+
+        let signalLabel = "สัญญาณอ่อน";
+        let signalClass = "low";
+        if (signal >= 80) {
+          signalLabel = "สัญญาณดีมาก";
+          signalClass = "";
+        } else if (signal >= 60) {
+          signalLabel = "สัญญาณดี";
+          signalClass = "";
+        } else if (signal >= 40) {
+          signalLabel = "สัญญาณปานกลาง";
+          signalClass = "medium";
+        }
+        findings.push({
+          level: "info",
+          title: signalLabel + " (" + signal + "%)",
+          detail: "เปอร์เซ็นต์นี้เป็นคุณภาพสัญญาณที่ Windows รายงาน ไม่ใช่ความเสี่ยงด้านความปลอดภัย สัญญาณอ่อนอาจทำให้การเชื่อมต่อไม่เสถียร"
+        });
+
+        const highCount = findings.filter((finding) => finding.level === "high").length;
+        const mediumCount = findings.filter((finding) => finding.level === "medium").length;
+        const lowCount = findings.filter((finding) => finding.level === "low").length;
+        let securityStatus = "ไม่พบปัญหาจากค่าที่อ่านได้";
+        if (highCount > 0) securityStatus = "ความเสี่ยงสูง";
+        else if (mediumCount > 0) securityStatus = "ความเสี่ยงปานกลาง";
+        else if (unknownSecurity) securityStatus = "ข้อมูลไม่พอสรุป";
+
+        document.getElementById("wifiSecurityStatus").textContent = securityStatus;
+        document.getElementById("wifiSsid").textContent = report.ssid;
+        document.getElementById("wifiSignalText").textContent = signalLabel + " · " + signal + "%";
+        const signalBar = document.getElementById("wifiSignalBar");
+        signalBar.style.width = signal + "%";
+        signalBar.className = "wifi-signal-fill " + signalClass;
+        document.getElementById("wifiHighCount").textContent = String(highCount);
+        document.getElementById("wifiMediumCount").textContent = String(mediumCount);
+        document.getElementById("wifiLowCount").textContent = String(lowCount);
+        document.getElementById("wifiAuthentication").textContent = report.authentication;
+        document.getElementById("wifiCipher").textContent = report.cipher;
+        document.getElementById("wifiCapturedAt").textContent = new Date(report.capturedAtUtc).toLocaleString("th-TH");
+        summary.hidden = false;
+        renderFindings(output, findings);
+      } catch (error) {
+        summary.hidden = true;
+        renderFindings(output, [{
+          level: "info",
+          title: "อ่านรายงาน Wi-Fi ไม่สำเร็จ",
+          detail: error instanceof SyntaxError
+            ? "ไฟล์ไม่ใช่ JSON ที่ถูกต้อง กรุณาเลือก wifi-scan.json ที่สร้างจากตัวช่วย"
+            : error.message
+        }]);
+      }
+    });
+
+    document.getElementById("localVirusReportForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const output = document.getElementById("localVirusScanResults");
+      const summary = document.getElementById("localVirusSummary");
+      const file = document.getElementById("localVirusReportFile").files[0];
+      if (!file) return;
+
+      try {
+        if (file.size > 1024 * 1024) throw new Error("ไฟล์รายงานมีขนาดเกินกำหนด");
+        const report = JSON.parse(await file.text());
+        if (!report || typeof report !== "object" || Array.isArray(report)) {
+          throw new Error("รูปแบบรายงานไม่ถูกต้องหรือไม่ใช่รายงานจากตัวช่วย Microsoft Defender");
+        }
+        if (
+          report.schemaVersion !== 1 ||
+          report.engine !== "Microsoft Defender" ||
+          !Array.isArray(report.files) ||
+          report.files.length === 0 ||
+          !Array.isArray(report.threats) ||
+          !Number.isInteger(report.threatDetectionCount) ||
+          report.threatDetectionCount < 0 ||
+          typeof report.scanStartedAtUtc !== "string" ||
+          Number.isNaN(Date.parse(report.scanStartedAtUtc)) ||
+          typeof report.scanFinishedAtUtc !== "string" ||
+          Number.isNaN(Date.parse(report.scanFinishedAtUtc))
+        ) {
+          throw new Error("รูปแบบรายงานไม่ถูกต้องหรือไม่ใช่รายงานจากตัวช่วย Microsoft Defender");
+        }
+        const validFiles = report.files.every((item) =>
+          item &&
+          typeof item.fileName === "string" &&
+          (item.status === "completed" || item.status === "failed") &&
+          Number.isFinite(item.sizeBytes) &&
+          item.sizeBytes >= 0
+        );
+        const validThreats = report.threats.every((threat) =>
+          threat &&
+          typeof threat.name === "string" &&
+          ["high", "medium", "low", "info"].includes(threat.severity)
+        );
+        if (!validFiles || !validThreats || report.threats.length > report.threatDetectionCount) {
+          throw new Error("ข้อมูลผลการตรวจในรายงานไม่ถูกต้อง");
+        }
+
+        const completed = report.files.filter((item) => item.status === "completed").length;
+        const failedFiles = report.files.filter((item) => item.status === "failed");
+        const findings = [];
+        report.threats.forEach((threat) => {
+          findings.push({
+            level: threat.severity,
+            title: "Microsoft Defender ตรวจพบ: " + threat.name,
+            detail: "พบรายการตรวจจับระหว่างสแกนในเครื่อง ตรวจสอบ Windows Security > Protection history เพื่อดูสถานะการจัดการภัยคุกคาม"
+          });
+        });
+        if (report.threatDetectionCount > report.threats.length) {
+          findings.push({
+            level: "info",
+            title: "Defender รายงานรายการตรวจจับที่ไม่มีรายละเอียด",
+            detail: "มี " + (report.threatDetectionCount - report.threats.length) + " รายการที่อ่านชื่อหรือระดับความรุนแรงไม่ได้ โปรดตรวจสอบ Windows Security > Protection history"
+          });
+        }
+        failedFiles.forEach((item) => {
+          findings.push({
+            level: "medium",
+            title: "สแกนไฟล์ไม่สำเร็จ: " + item.fileName,
+            detail: item.error || "Microsoft Defender ไม่สามารถสแกนไฟล์นี้ได้"
+          });
+        });
+        if (findings.length === 0 && completed === report.files.length) {
+          findings.push({
+            level: "info",
+            title: "Microsoft Defender ไม่รายงานภัยคุกคามจากไฟล์ที่สแกน",
+            detail: "ตรวจ " + completed + " ไฟล์สำเร็จ ผลนี้ไม่ใช่การรับรองว่าไฟล์ปลอดภัยจากภัยคุกคามทุกชนิด"
+          });
+        } else if (findings.length === 0) {
+          findings.push({
+            level: "info",
+            title: "ไม่มีผลยืนยันว่าไฟล์ทั้งหมดสแกนสำเร็จ",
+            detail: "โปรดตรวจรายการไฟล์และสถานะการสแกนก่อนสรุปผล"
+          });
+        }
+
+        const highCount = report.threats.filter((threat) => threat.severity === "high").length;
+        const mediumCount = report.threats.filter((threat) => threat.severity === "medium").length;
+        const lowCount = report.threats.filter((threat) => threat.severity === "low").length;
+        document.getElementById("localVirusFileCount").textContent = String(report.files.length);
+        document.getElementById("localVirusCompletedCount").textContent = String(completed);
+        document.getElementById("localVirusFailedCount").textContent = String(failedFiles.length);
+        document.getElementById("localVirusThreatCount").textContent = String(report.threatDetectionCount);
+        document.getElementById("localVirusHighCount").textContent = String(highCount);
+        document.getElementById("localVirusMediumCount").textContent = String(mediumCount);
+        document.getElementById("localVirusLowCount").textContent = String(lowCount);
+        summary.hidden = false;
+        renderFindings(output, findings);
+        finishScan(
+          "local-virus-scan",
+          findings,
+          report.files.map((item) => item.fileName).join(", ")
+        );
+      } catch (error) {
+        summary.hidden = true;
+        renderFindings(output, [{
+          level: "info",
+          title: "อ่านรายงาน Microsoft Defender ไม่สำเร็จ",
+          detail: error instanceof SyntaxError
+            ? "ไฟล์ไม่ใช่ JSON ที่ถูกต้อง กรุณาเลือก virus-scan-report.json จากตัวช่วย"
+            : error.message
+        }]);
+      }
+    });
 
     function addFinding(container, finding) {
       const item = document.createElement("article");
@@ -558,8 +999,19 @@
     }
 
     async function checkBackendHealth() {
+      if (!apiBase) {
+        updateServiceStatus("apiHealth", false, "ยังไม่เชื่อมต่อ");
+        updateServiceStatus("queueHealth", false, "ยังไม่เชื่อมต่อ");
+        updateServiceStatus("dbHealth", false, "ยังไม่เชื่อมต่อ");
+        updateServiceStatus("virusEngineHealth", false, "ยังไม่เชื่อมต่อ");
+        document.getElementById("backendStatusText").textContent = "เว็บ Static · ไม่มี Backend";
+        document.getElementById("backendStatusDot").style.background = "var(--muted)";
+        document.getElementById("virusWorkerState").textContent = "ไม่เชื่อมต่อ";
+        document.getElementById("virusWorkerState").style.color = "var(--muted)";
+        return;
+      }
       try {
-        const response = await fetch("/api/v1/health", { cache: "no-store" });
+        const response = await fetch(apiUrl("health"), { cache: "no-store" });
         if (!response.ok) throw new Error("Backend ตอบกลับ HTTP " + response.status);
         const health = await response.json();
         const services = health.services || {};
@@ -567,13 +1019,15 @@
         const queueReady = services.redis === true && services.worker === true;
         updateServiceStatus("queueHealth", queueReady, queueReady ? "Celery/Redis พร้อม" : "Celery/Redis ไม่พร้อม");
         updateServiceStatus("dbHealth", services.database === true, services.database ? "PostgreSQL พร้อม" : "Database ไม่พร้อม");
-        updateServiceStatus("virusEngineHealth", services.clamav === true, services.clamav ? "ClamAV พร้อม" : "ClamAV ไม่พร้อม");
+        const enginesReady = services.clamav === true && services.yara === true;
+        updateServiceStatus("virusEngineHealth", enginesReady, enginesReady ? "ClamAV / YARA พร้อม" : "ClamAV / YARA ไม่พร้อม");
         const ready = health.virus_scan_ready === true;
         document.getElementById("backendStatusText").textContent = ready ? "Backend พร้อมสแกนไฟล์" : "Backend เชื่อมต่อ · บางบริการยังไม่พร้อม";
         document.getElementById("backendStatusDot").style.background = ready ? "var(--green)" : "var(--yellow)";
         document.getElementById("virusWorkerState").textContent = ready ? "พร้อม" : "ไม่พร้อม";
         document.getElementById("virusWorkerState").style.color = ready ? "var(--green)" : "var(--yellow)";
-      } catch {
+      } catch (error) {
+        console.error("Backend health check failed.", error);
         updateServiceStatus("apiHealth", false, "ยังไม่เชื่อมต่อ");
         updateServiceStatus("queueHealth", false, "ยังไม่เชื่อมต่อ");
         updateServiceStatus("dbHealth", false, "ยังไม่เชื่อมต่อ");
@@ -595,7 +1049,7 @@
       document.getElementById("virusRunningCount").textContent = String(counts.running);
       document.getElementById("virusCompletedCount").textContent = String(counts.completed);
 
-      for (const containerId of ["virusScanJobs", "queueVirusJobs"]) {
+      for (const containerId of ["dashboardVirusScanJobs", "virusScanJobs", "queueVirusJobs"]) {
         const container = document.getElementById(containerId);
         container.replaceChildren();
         if (jobs.length === 0) {
@@ -645,7 +1099,9 @@
         : "SHA-256: " + (scan.sha256 || "ไม่ระบุ");
       if (!job.finalized && (scan.status === "completed" || scan.status === "failed")) {
         job.finalized = true;
-        renderFindings(document.getElementById("virusScanResults"), findings);
+        for (const resultsId of ["dashboardVirusScanResults", "virusScanResults"]) {
+          renderFindings(document.getElementById(resultsId), findings);
+        }
         finishScan("virus-file-" + job.mode, findings, job.filename);
       }
       renderVirusJobs();
@@ -660,7 +1116,7 @@
       while (!job.finalized && transientErrors < 5) {
         await delay(1800);
         try {
-          const response = await fetch("/api/v1/virus-scans/" + encodeURIComponent(job.id), {
+          const response = await fetch(apiUrl("virus-scans/" + encodeURIComponent(job.id)), {
             headers: { "X-Scan-Token": job.token },
             cache: "no-store"
           });
@@ -761,19 +1217,19 @@
       let target;
       try {
         target = new URL(input.value.trim());
-        if (!["http:", "https:"].includes(target.protocol) || target.username || target.password) {
-          throw new Error("กรุณาระบุ URL แบบ HTTP/HTTPS โดยไม่ใส่ username หรือ password");
-        }
-      } catch (error) {
-        renderFindings(output, [{ level: "info", title: "URL ไม่ถูกต้อง", detail: error.message }]);
+      } catch {
+        renderFindings(output, [{ level: "info", title: "URL ไม่ถูกต้อง", detail: "กรุณาระบุ URL ที่ถูกต้องและขึ้นต้นด้วย HTTP หรือ HTTPS" }]);
         return;
       }
-
+      if (!["http:", "https:"].includes(target.protocol) || target.username || target.password) {
+        renderFindings(output, [{ level: "info", title: "URL ไม่รองรับ", detail: "อนุญาตเฉพาะ URL แบบ HTTP/HTTPS ที่ไม่มีข้อมูลรับรองฝังอยู่ใน URL" }]);
+        return;
+      }
       button.disabled = true;
-      button.textContent = "กำลังตรวจสอบ...";
+      button.textContent = "กำลังตรวจ...";
       const findings = [];
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 12000);
+      const timeout = window.setTimeout(() => controller.abort(), 10000);
       try {
         const response = await fetch(target.href, {
           method: "HEAD",
@@ -782,43 +1238,63 @@
           cache: "no-store",
           signal: controller.signal
         });
-        const headers = response.headers;
-        const recommendations = [
-          ["content-security-policy", "Content-Security-Policy", "กำหนดนโยบาย Content Security Policy เพื่อลดความเสี่ยงจากเนื้อหาที่ไม่พึงประสงค์"],
-          ["x-content-type-options", "X-Content-Type-Options", "ตั้งค่า X-Content-Type-Options: nosniff"],
-          ["referrer-policy", "Referrer-Policy", "กำหนด Referrer-Policy ให้เหมาะสม"],
-          ["permissions-policy", "Permissions-Policy", "จำกัด browser features ด้วย Permissions-Policy"],
-          ["x-frame-options", "X-Frame-Options", "กำหนด X-Frame-Options หรือ frame-ancestors ใน CSP"]
+        const securityHeaders = [
+          ["Content-Security-Policy", "medium", "กำหนด Content-Security-Policy เพื่อลดความเสี่ยงจากสคริปต์และเนื้อหาที่ไม่คาดหมาย"],
+          ["X-Content-Type-Options", "low", "ตั้งค่า X-Content-Type-Options: nosniff เพื่อป้องกันการเดาชนิด MIME"],
+          ["Referrer-Policy", "low", "กำหนด Referrer-Policy เพื่อลดการส่ง URL อ้างอิงไปยังเว็บไซต์อื่น"],
+          ["Permissions-Policy", "low", "กำหนด Permissions-Policy เพื่อจำกัดการใช้ความสามารถของ browser"],
+          ["Strict-Transport-Security", "medium", "สำหรับเว็บไซต์ HTTPS ให้ตั้งค่า Strict-Transport-Security หลังตรวจสอบการรองรับโดเมนย่อย"]
         ];
-        for (const [key, label, suggestion] of recommendations) {
-          if (!headers.has(key)) findings.push({ level: "medium", title: "ไม่พบ " + label, detail: suggestion });
-        }
-        if (target.protocol === "https:" && !headers.has("strict-transport-security")) {
-          findings.push({ level: "medium", title: "ไม่พบ Strict-Transport-Security", detail: "พิจารณาตั้งค่า HSTS หลังตรวจสอบว่า subdomain ทั้งหมดรองรับ HTTPS แล้ว" });
-        }
-        if (headers.has("server")) {
-          findings.push({ level: "low", title: "เปิดเผย Server header", detail: "พบค่า Server: " + headers.get("server") + " พิจารณาลดรายละเอียดเวอร์ชันที่เปิดเผย" });
-        }
-        if (!response.ok) {
-          findings.push({ level: "low", title: "เว็บไซต์ตอบกลับ HTTP " + response.status, detail: "ตรวจสอบว่า URL ถูกต้องและ endpoint นี้รองรับ HEAD request หรือไม่" });
+        if (target.origin === location.origin) {
+          for (const [name, level, recommendation] of securityHeaders) {
+            if (name === "Strict-Transport-Security" && target.protocol !== "https:") continue;
+            if (!response.headers.get(name)) {
+              findings.push({ level, title: "ไม่พบ " + name, detail: recommendation, recommendation });
+            }
+          }
+          if (!response.headers.get("X-Frame-Options") && !/frame-ancestors/i.test(response.headers.get("Content-Security-Policy") || "")) {
+            findings.push({
+              level: "medium",
+              title: "ไม่พบการป้องกันการฝังหน้าเว็บ",
+              detail: "ตั้งค่า X-Frame-Options หรือ directive frame-ancestors ใน Content-Security-Policy เพื่อช่วยลดความเสี่ยง clickjacking"
+            });
+          }
+          const serverHeader = response.headers.get("Server");
+          if (serverHeader) {
+            findings.push({ level: "low", title: "เปิดเผยข้อมูล Server header", detail: "พบค่า Server: " + serverHeader + " พิจารณาลดข้อมูลรุ่นหรือรายละเอียดที่เปิดเผย" });
+          }
+        } else {
+          const readableHeaders = securityHeaders.map(([name]) => name)
+            .concat(["X-Frame-Options", "Server"])
+            .filter((name) => response.headers.has(name));
+          findings.push({
+            level: "info",
+            title: "ตรวจ headers ข้าม origin ได้จำกัด",
+            detail: readableHeaders.length
+              ? "Browser อ่านได้เฉพาะ headers ที่เว็บไซต์เปิดผ่าน CORS: " + readableHeaders.join(", ") + " จึงไม่สรุปว่า headers อื่นมีหรือขาด"
+              : "เว็บไซต์ไม่ได้เปิด security headers ให้ browser อ่านผ่าน CORS จึงไม่สรุปว่า header มีหรือขาด"
+          });
+          const serverHeader = response.headers.get("Server");
+          if (serverHeader) {
+            findings.push({ level: "low", title: "เปิดเผยข้อมูล Server header", detail: "พบค่า Server: " + serverHeader + " พิจารณาลดข้อมูลรุ่นหรือรายละเอียดที่เปิดเผย" });
+          }
         }
         findings.push({
           level: "info",
-          title: "ข้อจำกัดของการตรวจ",
-          detail: "ตรวจเฉพาะ headers ที่ browser เปิดให้อ่าน; browser ตรวจใบรับรอง TLS แต่หน้านี้อ่านวันหมดอายุ, chain หรือ cipher suite ไม่ได้" +
-            (response.url && response.url !== target.href ? " ปลายทาง redirect ไปยัง " + response.url : "")
+          title: "ตรวจ HTTP HEAD สำเร็จ",
+          detail: "ได้รับสถานะ HTTP " + response.status + " ผลตรวจจำกัดเฉพาะ headers ที่เว็บไซต์อนุญาตให้ browser อ่านได้"
         });
-        renderFindings(output, findings, "ไม่พบรายการจาก headers ที่ตรวจได้");
+        renderFindings(output, findings, "การตรวจแบบ Passive ไม่ได้ crawl หรือทดสอบการโจมตี");
         finishScan("website-headers", findings, target.href);
       } catch (error) {
-        const detail = error.name === "AbortError"
-          ? "คำขอหมดเวลาเกิน 12 วินาที"
-          : "Browser อ่านผลไม่ได้ อาจเกิดจาก CORS, DNS, TLS หรือเว็บไซต์ไม่รองรับ HEAD; ไม่มีการยืนยันว่าปลายทางปลอดภัย";
-        findings.push({ level: "info", title: "ตรวจเว็บไซต์ไม่สำเร็จ", detail: detail + " (" + error.message + ")" });
-        renderFindings(output, findings);
-        finishScan("website-headers", findings, target.href);
+        const reason = error.name === "AbortError"
+          ? "คำขอหมดเวลา: หยุดรอหลัง 10 วินาที"
+          : "Browser ไม่สามารถอ่านคำตอบได้ อาจเป็นเพราะเว็บไซต์ไม่อนุญาต CORS หรือปฏิเสธคำขอ HEAD";
+        const failedFindings = [{ level: "info", title: "ตรวจ headers ไม่สำเร็จ", detail: reason }];
+        renderFindings(output, failedFindings);
+        finishScan("website-headers", failedFindings, target.href);
       } finally {
-        clearTimeout(timeout);
+        window.clearTimeout(timeout);
         button.disabled = false;
         button.textContent = "เริ่มตรวจแบบ Passive";
       }
@@ -989,77 +1465,189 @@
       }
     });
 
-    document.getElementById("virusScanForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const files = Array.from(document.getElementById("virusFiles").files);
-      const output = document.getElementById("virusScanResults");
-      const button = event.currentTarget.querySelector("button[type=submit]");
-      const mode = document.querySelector("input[name=virusMode]:checked").value;
-      if (files.length === 0 || files.length > 10) {
-        renderFindings(output, [{
-          level: "info",
-          title: "จำนวนไฟล์ไม่ถูกต้อง",
-          detail: "เลือกไฟล์อย่างน้อย 1 ไฟล์และไม่เกิน 10 ไฟล์ต่อครั้ง"
-        }]);
-        return;
-      }
-      const tooLarge = files.find((file) => file.size > 20 * 1024 * 1024);
-      if (tooLarge) {
-        renderFindings(output, [{
-          level: "info",
-          title: "ไฟล์มีขนาดเกินกำหนด",
-          detail: tooLarge.name + " มีขนาดเกิน 20 MiB"
-        }]);
-        return;
-      }
-
-      button.disabled = true;
-      button.textContent = "กำลังส่งไฟล์เข้าคิว...";
-      renderFindings(output, [{
-        level: "info",
-        title: "กำลังส่งไฟล์เข้าสู่ระบบสแกน",
-        detail: "ไฟล์จะถูกอัปโหลดไปยัง Backend ที่ให้บริการหน้านี้ และไม่ถูกรัน"
-      }]);
-      try {
-        for (const file of files) {
-          const form = new FormData();
-          form.append("file", file, file.name);
-          form.append("mode", mode);
-          form.append("consent", "true");
-          const response = await fetch("/api/v1/virus-scans", {
-            method: "POST",
-            body: form,
-            cache: "no-store"
-          });
-          const payload = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            const detail = payload.detail || "Backend ตอบกลับ HTTP " + response.status;
-            throw new Error(file.name + ": " + detail);
-          }
-          const job = {
-            ...payload.scan,
-            token: payload.access_token,
-            finalized: false,
-            message: "ส่งเข้าคิวแล้ว"
-          };
-          state.virusJobs.set(job.id, job);
-          renderVirusJobs();
-          void pollVirusJob(job);
+    document.querySelectorAll(".virus-scan-form").forEach((scanForm) => {
+      scanForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const files = Array.from(form.querySelector('input[type="file"]').files);
+        const output = document.getElementById(form.dataset.results);
+        const button = form.querySelector("button[type=submit]");
+        const mode = form.querySelector('input[type="radio"]:checked').value;
+        if (files.length === 0 || files.length > 10) {
+          renderFindings(output, [{
+            level: "info",
+            title: "จำนวนไฟล์ไม่ถูกต้อง",
+            detail: "เลือกไฟล์อย่างน้อย 1 ไฟล์และไม่เกิน 10 ไฟล์ต่อครั้ง"
+          }]);
+          return;
         }
-      } catch (error) {
+        const tooLarge = files.find((file) => file.size > 20 * 1024 * 1024);
+        if (tooLarge) {
+          renderFindings(output, [{
+            level: "info",
+            title: "ไฟล์มีขนาดเกินกำหนด",
+            detail: tooLarge.name + " มีขนาดเกิน 20 MiB"
+          }]);
+          return;
+        }
+        if (!apiBase) {
+          renderFindings(output, [{
+            level: "info",
+            title: "ไม่มี Backend สำหรับสแกนไฟล์",
+            detail: "หน้านี้เผยแพร่บน GitHub Pages ซึ่งให้บริการเฉพาะไฟล์ static ใช้ตัวช่วย Microsoft Defender ในเครื่องสำหรับสแกนโดยไม่อัปโหลดไฟล์"
+          }]);
+          return;
+        }
+
+        button.disabled = true;
+        button.textContent = "กำลังส่งไฟล์เข้าคิว...";
         renderFindings(output, [{
           level: "info",
-          title: "ส่งไฟล์เข้าคิวไม่สำเร็จ",
-          detail: error.message + " ตรวจสอบสถานะ Backend/Redis แล้วลองส่งไฟล์ที่ยังไม่สำเร็จใหม่"
+          title: "กำลังส่งไฟล์เข้าสู่ระบบสแกน",
+          detail: "ไฟล์จะถูกอัปโหลดไปยัง Backend ที่ให้บริการหน้านี้ และไม่ถูกรัน"
         }]);
-      } finally {
-        button.disabled = false;
-        button.textContent = "ส่งไฟล์เข้าคิวสแกน";
-      }
+        try {
+          for (const file of files) {
+            const uploadForm = new FormData();
+            uploadForm.append("file", file, file.name);
+            uploadForm.append("mode", mode);
+            uploadForm.append("consent", "true");
+            const response = await fetch(apiUrl("virus-scans"), {
+              method: "POST",
+              body: uploadForm,
+              cache: "no-store"
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+              const detail = payload.detail || "Backend ตอบกลับ HTTP " + response.status;
+              throw new Error(file.name + ": " + detail);
+            }
+            const job = {
+              ...payload.scan,
+              token: payload.access_token,
+              finalized: false,
+              message: "ส่งเข้าคิวแล้ว"
+            };
+            state.virusJobs.set(job.id, job);
+            renderVirusJobs();
+            void pollVirusJob(job);
+          }
+        } catch (error) {
+          renderFindings(output, [{
+            level: "info",
+            title: "ส่งไฟล์เข้าคิวไม่สำเร็จ",
+            detail: error.message + " ตรวจสอบสถานะ Backend/Redis แล้วลองส่งไฟล์ที่ยังไม่สำเร็จใหม่"
+          }]);
+        } finally {
+          button.disabled = false;
+          button.textContent = "ส่งไฟล์เข้าคิวสแกน";
+        }
+      });
     });
 
     checkBackendHealth();
-    window.setInterval(checkBackendHealth, 15000);
+    if (apiBase) window.setInterval(checkBackendHealth, 15000);
+  </script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
+    import {
+      createUserWithEmailAndPassword,
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAjyXKgx8Ox-s9tBsP2w2psXWM0EVUJCOk",
+      authDomain: "deea-9ed32.firebaseapp.com",
+      projectId: "deea-9ed32",
+      storageBucket: "deea-9ed32.firebasestorage.app",
+      messagingSenderId: "649361533233",
+      appId: "1:649361533233:web:a2f979984a76f67f222810",
+      measurementId: "G-5V2FS5TZDY"
+    };
+
+    const authMessage = document.getElementById("authMessage");
+    const authErrorMessages = {
+      "auth/email-already-in-use": "อีเมลนี้มีบัญชีอยู่แล้ว",
+      "auth/invalid-email": "รูปแบบอีเมลไม่ถูกต้อง",
+      "auth/network-request-failed": "เชื่อมต่อ Firebase ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง",
+      "auth/operation-not-allowed": "ยังไม่ได้เปิด Email/Password ใน Firebase Console",
+      "auth/weak-password": "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร",
+      "auth/too-many-requests": "มีคำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่"
+    };
+
+    function setAuthMessage(message, type = "") {
+      authMessage.textContent = message;
+      authMessage.className = "auth-message" + (type ? " " + type : "");
+    }
+
+    function displayAuthError(error) {
+      console.error("Firebase Authentication request failed.", error);
+      setAuthMessage(
+        authErrorMessages[error.code] || "ดำเนินการไม่สำเร็จ กรุณาตรวจการตั้งค่า Firebase Authentication แล้วลองใหม่",
+        "error"
+      );
+    }
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      onAuthStateChanged(auth, (user) => {
+        document.getElementById("authSignedOut").hidden = Boolean(user);
+        document.getElementById("authSignedIn").hidden = !user;
+        document.getElementById("authUserEmail").textContent = user?.email || "บัญชี Firebase";
+        if (user) setAuthMessage("บัญชี Firebase พร้อมใช้งาน", "success");
+        else setAuthMessage("สร้างบัญชีใหม่ด้วยอีเมลของคุณ");
+      }, (error) => {
+        displayAuthError(error);
+      });
+
+      document.getElementById("createAccountForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const email = document.getElementById("authEmail").value.trim();
+        const password = document.getElementById("authPassword").value;
+        const passwordConfirm = document.getElementById("authPasswordConfirm").value;
+        if (password !== passwordConfirm) {
+          setAuthMessage("รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน", "error");
+          document.getElementById("authPasswordConfirm").focus();
+          return;
+        }
+        const button = document.getElementById("createAccountButton");
+        button.disabled = true;
+        button.textContent = "กำลังสร้างบัญชี...";
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+          displayAuthError(error);
+        } finally {
+          button.disabled = false;
+          button.textContent = "สร้างบัญชี";
+        }
+      });
+
+      document.getElementById("signOutButton").addEventListener("click", async () => {
+        try {
+          await signOut(auth);
+        } catch (error) {
+          displayAuthError(error);
+        }
+      });
+
+      try {
+        if (await isSupported()) {
+          getAnalytics(app);
+        } else {
+          console.warn("Firebase Analytics is not supported in this browser.");
+        }
+      } catch (error) {
+        console.error("Firebase Analytics could not be initialized.", error);
+      }
+    } catch (error) {
+      console.error("Firebase Authentication could not be initialized.", error);
+      setAuthMessage("เริ่ม Firebase Authentication ไม่สำเร็จ ตรวจสอบ Firebase config แล้วลองโหลดหน้าใหม่", "error");
+    }
   </script>
 </body>
 </html>
