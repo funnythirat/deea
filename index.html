@@ -23,6 +23,7 @@
       font-family: "Segoe UI", Tahoma, sans-serif;
     }
     * { box-sizing: border-box; }
+    #appShell[hidden] { display: none; }
     body {
       margin: 0;
       min-width: 320px;
@@ -250,7 +251,7 @@
   </style>
 </head>
 <body>
-  <div class="layout">
+  <div id="appShell" class="layout" hidden>
     <aside>
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">S</div>
@@ -277,39 +278,11 @@
     <main>
       <header class="topbar">
         <div><div class="eyebrow">SECURITY OVERVIEW</div><h1 id="pageTitle">ภาพรวมความปลอดภัย</h1></div>
-        <div class="status-pill"><span class="status-dot" id="backendStatusDot" style="background:var(--yellow);box-shadow:none"></span><span id="backendStatusText">กำลังตรวจสอบ Backend...</span></div>
-      </header>
-
-      <section class="card auth-panel" aria-labelledby="authHeading">
-        <div class="auth-content">
-          <div class="auth-copy">
-            <p class="auth-kicker">FIREBASE ACCOUNT</p>
-            <h2 id="authHeading">สร้างบัญชี</h2>
-            <p class="sub">สร้างบัญชีเพื่อเริ่มต้นใช้งาน พื้นที่นี้ใช้ Firebase Authentication และไม่ส่งรหัสผ่านไปยังระบบสแกน</p>
-          </div>
-          <div id="authSignedOut">
-            <form id="createAccountForm" class="auth-form">
-              <label for="authEmail">อีเมล
-                <input type="email" id="authEmail" autocomplete="email" placeholder="you@example.com" required>
-              </label>
-              <label for="authPassword">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)
-                <input type="password" id="authPassword" autocomplete="new-password" minlength="6" required>
-              </label>
-              <label for="authPasswordConfirm">ยืนยันรหัสผ่าน
-                <input type="password" id="authPasswordConfirm" autocomplete="new-password" minlength="6" required>
-              </label>
-              <button class="btn" id="createAccountButton" type="submit">สร้างบัญชี</button>
-            </form>
-          </div>
-          <div id="authSignedIn" class="auth-account-ready" hidden>
-            <strong>บัญชี Firebase พร้อมใช้งาน</strong>
-            <span id="authUserEmail"></span>
-            <button class="btn secondary" id="signOutButton" type="button">ออกจากบัญชี</button>
-          </div>
-          <p id="authMessage" class="auth-message" role="status" aria-live="polite">กำลังเชื่อมต่อ Firebase Authentication...</p>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="status-pill"><span class="status-dot" id="backendStatusDot" style="background:var(--yellow);box-shadow:none"></span><span id="backendStatusText">กำลังตรวจสอบ Backend...</span></div>
+          <button class="btn secondary" id="signOutButton" type="button">ออกจากระบบ</button>
         </div>
-        <div class="callout auth-warning">บัญชีนี้ใช้สำหรับ Firebase Authentication เท่านั้น ยังไม่เชื่อมกับสิทธิ์ของ FastAPI; backend ต้องตรวจ Firebase ID token ก่อนจึงจะใช้บัญชีนี้ควบคุมการอัปโหลดหรือข้อมูลสแกนได้</div>
-      </section>
+      </header>
 
       <section class="view active" id="view-dashboard">
         <div class="hero">
@@ -1551,12 +1524,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
-    import {
-      createUserWithEmailAndPassword,
-      getAuth,
-      onAuthStateChanged,
-      signOut
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAjyXKgx8Ox-s9tBsP2w2psXWM0EVUJCOk",
@@ -1568,70 +1536,30 @@
       measurementId: "G-5V2FS5TZDY"
     };
 
-    const authMessage = document.getElementById("authMessage");
-    const authErrorMessages = {
-      "auth/email-already-in-use": "อีเมลนี้มีบัญชีอยู่แล้ว",
-      "auth/invalid-email": "รูปแบบอีเมลไม่ถูกต้อง",
-      "auth/network-request-failed": "เชื่อมต่อ Firebase ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง",
-      "auth/operation-not-allowed": "ยังไม่ได้เปิด Email/Password ใน Firebase Console",
-      "auth/weak-password": "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร",
-      "auth/too-many-requests": "มีคำขอมากเกินไป กรุณารอสักครู่แล้วลองใหม่"
-    };
-
-    function setAuthMessage(message, type = "") {
-      authMessage.textContent = message;
-      authMessage.className = "auth-message" + (type ? " " + type : "");
-    }
-
-    function displayAuthError(error) {
-      console.error("Firebase Authentication request failed.", error);
-      setAuthMessage(
-        authErrorMessages[error.code] || "ดำเนินการไม่สำเร็จ กรุณาตรวจการตั้งค่า Firebase Authentication แล้วลองใหม่",
-        "error"
-      );
-    }
-
+    const appShell = document.getElementById("appShell");
     try {
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       onAuthStateChanged(auth, (user) => {
-        document.getElementById("authSignedOut").hidden = Boolean(user);
-        document.getElementById("authSignedIn").hidden = !user;
-        document.getElementById("authUserEmail").textContent = user?.email || "บัญชี Firebase";
-        if (user) setAuthMessage("บัญชี Firebase พร้อมใช้งาน", "success");
-        else setAuthMessage("สร้างบัญชีใหม่ด้วยอีเมลของคุณ");
-      }, (error) => {
-        displayAuthError(error);
-      });
-
-      document.getElementById("createAccountForm").addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const email = document.getElementById("authEmail").value.trim();
-        const password = document.getElementById("authPassword").value;
-        const passwordConfirm = document.getElementById("authPasswordConfirm").value;
-        if (password !== passwordConfirm) {
-          setAuthMessage("รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน", "error");
-          document.getElementById("authPasswordConfirm").focus();
+        if (!user) {
+          location.replace("login.html");
           return;
         }
-        const button = document.getElementById("createAccountButton");
-        button.disabled = true;
-        button.textContent = "กำลังสร้างบัญชี...";
-        try {
-          await createUserWithEmailAndPassword(auth, email, password);
-        } catch (error) {
-          displayAuthError(error);
-        } finally {
-          button.disabled = false;
-          button.textContent = "สร้างบัญชี";
-        }
+        appShell.hidden = false;
+      }, (error) => {
+        console.error("Firebase Authentication state could not be read.", error);
+        location.replace("login.html");
       });
 
-      document.getElementById("signOutButton").addEventListener("click", async () => {
+      document.getElementById("signOutButton").addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
         try {
           await signOut(auth);
         } catch (error) {
-          displayAuthError(error);
+          console.error("Firebase sign-out failed.", error);
+          button.disabled = false;
+          window.alert("ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
         }
       });
 
@@ -1645,8 +1573,8 @@
         console.error("Firebase Analytics could not be initialized.", error);
       }
     } catch (error) {
-      console.error("Firebase Authentication could not be initialized.", error);
-      setAuthMessage("เริ่ม Firebase Authentication ไม่สำเร็จ ตรวจสอบ Firebase config แล้วลองโหลดหน้าใหม่", "error");
+      console.error("Firebase could not be initialized.", error);
+      location.replace("login.html");
     }
   </script>
 </body>
