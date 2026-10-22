@@ -1,21 +1,23 @@
 # สถาปัตยกรรมระบบสแกนความปลอดภัย
 
-เอกสารนี้อธิบายเว็บต้นแบบใน [index.html](./index.html) และ backend สำหรับสแกนไฟล์ด้วย ClamAV/YARA ผ่าน FastAPI, Celery, Redis และ PostgreSQL
+เอกสารนี้อธิบายหน้าเข้าสู่ระบบใน [login.html](./login.html), เว็บหลักใน [index.html](./index.html), การตรวจ Wi-Fi ในเครื่องด้วย PowerShell, การสแกนไฟล์ในเครื่องด้วย Microsoft Defender และ backend สำหรับสแกนไฟล์ด้วย ClamAV/YARA ผ่าน FastAPI, Celery, Redis และ PostgreSQL
 
 ## 1. เป้าหมายและขอบเขต
 
-ระบบใช้สำหรับตรวจสอบเว็บไซต์, ซอฟต์แวร์ และไฟล์ที่ผู้ใช้มีสิทธิ์ตรวจ การตรวจประกอบด้วย:
+ระบบต้นแบบปัจจุบันตรวจสอบรายการต่อไปนี้ เฉพาะเป้าหมาย/ไฟล์ที่ผู้ใช้มีสิทธิ์ตรวจ:
 
-- **HTTP security headers:** ส่งคำขอ `HEAD` แบบจำกัดจำนวนครั้งและ timeout
-- **TLS certificate:** ตรวจวันหมดอายุ, hostname, chain และผลการตรวจ certificate ด้วยไลบรารี TLS มาตรฐาน ไม่ทดสอบ cipher หรือโจมตี handshake
-- **Dependency:** อ่านชื่อและเวอร์ชันจาก lockfile แล้วเทียบกับ OSV API หรือฐานข้อมูลช่องโหว่ที่กำหนด
-- **Source code:** ตรวจแบบ static โดยไม่ execute โค้ด ใช้กฎหรือ static analysis engine ที่ทำงานใน isolated worker
-- **Virus scan:** สแกนไฟล์ที่ผู้ใช้เลือกอัปโหลดใน quarantine ด้วย ClamAV; โหมดปกติใช้ signature scan และโหมดลึกเพิ่ม YARA heuristic rules
-- **รายงาน:** จัดระดับตามข้อมูลจากแหล่งอ้างอิง หากไม่มี CVSS จากแหล่งข้อมูล ให้แสดงว่าไม่มีคะแนนแทนการคาดเดา
+- **HTTP security headers:** Backend ตรวจ URL แล้วส่งคำขอ `HEAD` หนึ่งครั้ง โดยมี timeout และตรวจ DNS/IP; endpoint นี้ยังทำงานใน request ไม่ได้เข้าคิว Celery
+- **TLS certificate:** ยังไม่มี backend checker; หน้าเว็บระบุความสามารถนี้ว่า “ต้องมี Backend”
+- **Dependency:** หน้าเว็บอ่านไฟล์ npm ที่ผู้ใช้เลือกและถาม OSV API เมื่อผู้ใช้เริ่มตรวจ ไม่ได้ดึง CVE feed รายวันหรืออัปเดต scanner plugins
+- **Source code:** ตรวจแบบ static ใน browser โดยไม่ execute โค้ด; ยังไม่มี source-code scanner task ใน Celery worker
+- **Virus scan:** เลือกสแกนไฟล์ในเครื่องด้วย Microsoft Defender โดยไม่อัปโหลดไฟล์ หรือเลือกอัปโหลดไฟล์เข้า quarantine เพื่อสแกนด้วย ClamAV; โหมด backend แบบลึกเพิ่ม YARA heuristic rules
+- **Wi-Fi:** Windows helper อ่านสถานะเครือข่ายที่เชื่อมต่ออยู่; การวิเคราะห์ทำใน browser หรือส่งรายงานโดยสมัครใจไปยัง endpoint ที่ตรวจ Firebase ID token และไม่บันทึกรายงาน
+- **รายงาน:** ผลในหน้าเว็บและประวัติอยู่ในหน่วยความจำ browser; Backend เก็บ metadata/ผลสแกนไฟล์ใน PostgreSQL แต่ยังไม่มี API สำหรับประวัติรายการสแกน
+- **สรุปผลภาษาไทย:** Backend สร้างข้อความจาก rule-based template เท่านั้น ยังไม่ได้เชื่อม AI model; CVE feed เป็น optional request-based integration ไม่ได้ดึงรายวันและไม่อัปเดต scanner rules อัตโนมัติ
 
-ไฟล์ที่อัปโหลดจะไม่ถูกรัน และถูกลบจาก quarantine หลัง worker จบงาน (กรณี worker หยุดผิดปกติ ระบบลบไฟล์ค้างที่เก่ากว่า 24 ชั่วโมงตอนเริ่ม API) ระบบไม่ลบไฟล์ต้นฉบับจากอุปกรณ์ของผู้ใช้
+การสแกนในเครื่องเรียก Microsoft Defender บน Windows และบันทึกเฉพาะรายงานไว้ในเครื่อง ไม่ส่งไฟล์หรือ path ไปยังเว็บ Defender อาจกักกันหรือลบภัยคุกคามตามการตั้งค่าของ Windows โหมด backend ไม่รันไฟล์ที่อัปโหลด และลบไฟล์จาก quarantine หลัง worker จบงาน (กรณี worker หยุดผิดปกติ ระบบลบไฟล์ค้างที่เก่ากว่า 24 ชั่วโมงตอนเริ่ม API)
 
-**ไม่รวมในขอบเขต:** การสแกนทั้งเครื่องผู้ใช้, SQL injection/XSS exploitation, fuzzing, credential testing, crawling, port scanning, brute force, การแก้ไขข้อมูลเป้าหมาย และการเรียกใช้ Nmap, Nuclei, OWASP ZAP active scan หรือ WPScan
+**ยังไม่มี implementation ในโปรเจกต์:** ZAP, Nuclei, Nmap และ WPScan รวมถึงการสแกน TLS certificate แบบ backend การสแกนทั้งเครื่องผู้ใช้, SQL injection/XSS exploitation, fuzzing, credential testing, brute force และการแก้ไขข้อมูลเป้าหมายไม่อยู่ในขอบเขตปัจจุบัน การสแกนเครือข่าย/เว็บไซต์แบบ active ต้องมี worker แยกและ allowlist ของเป้าหมายที่ได้รับอนุญาตก่อนพัฒนา
 
 ## 2. ภาพรวมสถาปัตยกรรม
 
@@ -34,8 +36,8 @@
                                            │ consume
                                            ▼
                                   ┌───────────────────────────────┐
-                                  │ Celery scanning workers       │
-                                  │ HTTP/TLS | SCA | Code | AV    │
+                                  │ Celery scanning worker        │
+                                  │ ClamAV | YARA file scans       │
                                   └──────────────┬────────────────┘
                                                  │
                            ┌─────────────────────┴───────────────────┐
@@ -47,23 +49,26 @@
 
 | ส่วน | หน้าที่ |
 |---|---|
-| Frontend | ส่งคำขอสแกนที่ผ่านการยืนยันขอบเขต แสดงสถานะและผลรายงาน |
-| FastAPI | รับไฟล์ขนาดจำกัด ตรวจ consent และ input สร้างงานและให้ API อ่านผล |
-| Celery + Redis | รับงานที่ใช้เวลานานและประมวลผลแบบ asynchronous; Redis เป็น broker ไม่ใช่แหล่งเก็บรายงานถาวร |
-| Celery workers | ทำการตรวจแยกตามชนิดงาน มี timeout, concurrency limit และ network policy |
-| PostgreSQL | เก็บ metadata, งานสแกน, สถานะ และผลการตรวจ |
-| OSV API | แหล่งข้อมูลภายนอกสำหรับค้นหา vulnerability ของ dependency ด้วยชื่อและเวอร์ชัน |
+| Frontend | ทำ source/dependency checks ใน browser, ส่งไฟล์สแกน และแสดงสถานะ/ผล |
+| FastAPI | รับไฟล์ขนาดจำกัดและ consent, สร้างงานสแกนไฟล์, ตรวจ health; website-header check เป็นคำขอ `HEAD` แบบ synchronous |
+| Celery + Redis | จัดคิวงานสแกนไฟล์; PostgreSQL outbox ใช้กู้คืนการ dispatch และ Redis ใช้ AOF persistence |
+| Celery workers | ตรวจไฟล์ด้วย ClamAV/YARA; ยังไม่มี task สำหรับ ZAP/Nuclei/Nmap/WPScan, TLS, dependency หรือ source code |
+| PostgreSQL | เก็บ metadata, สถานะ และผลการสแกนไฟล์ |
+| OSV API | หน้าเว็บ query รายการ dependency เมื่อผู้ใช้กดตรวจ; ไม่มี daily feed job ใน Backend |
 | ClamAV + YARA | ตรวจ signature และ heuristic indicators ของไฟล์ที่อัปโหลด; ไม่ execute ไฟล์ |
+| Microsoft Defender helper | ให้ Windows สแกนไฟล์ที่ผู้ใช้เลือกในเครื่อง และนำเข้ารายงาน JSON ใน browser; ไม่อัปโหลดไฟล์ |
 
 ## 3. ลำดับการทำงาน
 
 1. ผู้ใช้เลือกไฟล์, โหมดตรวจ และยืนยันสิทธิ์อัปโหลด
 2. Frontend ส่ง `POST /api/v1/virus-scans` เป็น `multipart/form-data`
 3. FastAPI จำกัดขนาด 20 MiB, สร้างชื่อไฟล์จาก UUID, คำนวณ SHA-256 และเก็บไฟล์ไว้ใน quarantine volume
-4. API สร้าง scan record และส่งเฉพาะ `scan_id` ไปยัง Celery; token สำหรับอ่านผลจะส่งกลับครั้งเดียวและเก็บไว้ใน browser memory
-5. Worker เปลี่ยนสถานะเป็น `running`; ClamAV ตรวจไฟล์ผ่าน INSTREAM protocol และ deep mode เรียก YARA rules เพิ่ม
+4. API สร้าง scan record และ outbox entry ใน transaction เดียว; Celery Beat ส่งงานจาก outbox ไป Redis และ retry งานที่ยัง queued; token สำหรับอ่านผลจะส่งกลับครั้งเดียวและเก็บไว้ใน browser memory
+5. Worker เปลี่ยนสถานะเป็น `running`; ClamAV ตรวจไฟล์ผ่าน clamd INSTREAM protocol และ deep mode เรียก YARA rules เพิ่ม
 6. Worker บันทึกผลและคำแนะนำลง PostgreSQL แล้วลบไฟล์ชั่วคราว
 7. Frontend อ่านสถานะ/ผลผ่าน `GET /api/v1/virus-scans/{scan_id}` พร้อม `X-Scan-Token`
+
+สำหรับการสแกนในเครื่อง ผู้ใช้ดาวน์โหลด `virus-scan.ps1`, เรียกใช้บน Windows ที่เปิด Microsoft Defender Antivirus, เลือกไฟล์ผ่านหน้าต่าง native และนำเข้ารายงาน JSON ใน browser ไฟล์ที่เลือกและ path ไม่ถูกส่งไปยัง API; การอ่านรายงานเป็น local file operation
 
 การอัปเดตสถานะรุ่นแรกใช้ polling ทุก 2–5 วินาที โดยมี backoff; เพิ่ม Server-Sent Events ได้ภายหลังหากจำเป็น
 
@@ -80,10 +85,13 @@
 | `GET` | `/api/v1/scans/{scan_id}/findings` | อ่านผลแบบแบ่งหน้า |
 | `GET` | `/api/v1/scans/{scan_id}/report` | ส่งออกรายงาน JSON |
 | `GET` | `/api/v1/health` | ตรวจสถานะ API, PostgreSQL, Redis และ ClamAV |
+| `GET` | `/wifi-scan.ps1` | ดาวน์โหลดตัวช่วยอ่านข้อมูล Wi-Fi ในเครื่อง Windows |
+| `GET` | `/virus-scan.ps1` | ดาวน์โหลดตัวช่วยสแกนไฟล์ด้วย Microsoft Defender ในเครื่อง |
 | `POST` | `/api/v1/virus-scans` | อัปโหลดไฟล์, เลือกโหมด `standard`/`deep` และสร้างงาน |
 | `GET` | `/api/v1/virus-scans/{scan_id}` | อ่านสถานะและผลโดยส่ง `X-Scan-Token` |
+| `POST` | `/api/v1/wifi-reports` | รับและวิเคราะห์ JSON จากตัวช่วย Wi-Fi; ต้องใช้ Firebase ID token และไม่เก็บ SSID ในฐานข้อมูล |
 
-Virus scan API เป็นส่วนใช้งานจริงในต้นแบบ; endpoints สำหรับ asset/website scan ในตารางเดิมเป็นแนวทางต่อยอดและยังไม่ได้ implement
+Virus scan และ Wi-Fi report APIs ใช้งานได้; endpoints สำหรับ asset/website scans ในตารางเดิมเป็นแนวทางต่อยอดและยังไม่ได้ implement
 
 การยกเลิกงาน (`DELETE /api/v1/scans/{scan_id}`) เพิ่มได้เมื่อ worker รองรับ cancellation อย่างปลอดภัย
 
@@ -116,7 +124,7 @@ Virus scan API เป็นส่วนใช้งานจริงในต�
 - แยก worker ตามชนิดงาน; static analysis และการอ่านไฟล์ควรทำใน container ที่ไม่ privileged และไม่มี network โดยไม่จำเป็น
 - จำกัด CPU, memory, execution time, ขนาดไฟล์, จำนวนไฟล์, จำนวน dependency และ concurrency
 - Redis ไม่ควรเปิดรับจาก public network; ใช้รหัสผ่าน/ACL, network isolation และ queue แยกตามประเภทงาน
-- ตั้งค่า task retry เฉพาะความผิดพลาดชั่วคราว พร้อมจำนวนครั้งสูงสุดและ exponential backoff
+- งานสแกนไฟล์ retry เมื่อ `ScannerUnavailableError` โดยจำกัด 2 ครั้งและใช้ backoff 5/10 วินาที; task ประเภทอื่นต้องกำหนด retry แยกตามลักษณะความผิดพลาด
 - ออกแบบ task ให้ idempotent เพื่อป้องกันงานซ้ำเมื่อ worker หยุดกลางทาง
 - เก็บ input ชั่วคราวนอก web root และลบตาม retention policy; ไม่ execute ไฟล์ที่ผู้ใช้อัปโหลด
 
@@ -127,23 +135,69 @@ Virus scan API เป็นส่วนใช้งานจริงในต�
 - ใช้ชื่อ UUID แทนชื่อที่ผู้ใช้อัปโหลดเป็น path; เก็บชื่อเดิมเป็น metadata ที่ escape ตอนแสดงผล
 - สแกนไฟล์โดยอ่านเป็น stream ผ่าน ClamAV; ไม่แตก archive ด้วยโค้ดเว็บเอง
 - ClamAV ใช้การประมวลผล archive ตามค่า engine; ควรตั้ง/ทบทวน `MaxScanSize`, `MaxFileSize`, `MaxRecursion`, `MaxFiles` กับเวอร์ชันที่ใช้งาน และทดสอบ archive bomb ก่อนเปิดสู่ภายนอก
-- YARA rules ที่ให้มาคือ heuristic ตัวอย่าง ไม่ใช่ฐานข้อมูลมัลแวร์ครบถ้วน และผลตรงกฎไม่ใช่ข้อสรุปว่าเป็นมัลแวร์
-- token อ่านผลเป็น capability token แบบสุ่ม; ต้นแบบยังไม่มีบัญชีผู้ใช้, CSRF/authentication เต็มรูปแบบ จึง bind API ที่ `127.0.0.1` และห้ามเปิดพอร์ตสู่ public internet
+- YARA rules ที่ให้มาคือ heuristic ตัวอย่างสำหรับ PowerShell download/decode/execute และ JavaScript decode/dynamic execution; เงื่อนไขต้องพบสัญญาณที่สัมพันธ์กันมากกว่าหนึ่งกลุ่ม ไม่ใช่ signature ครบถ้วน และผลตรงกฎไม่ใช่ข้อสรุปว่าเป็นมัลแวร์
+- อย่าเพิ่มตัวอย่างเงื่อนไขทั่วไป เช่น `($abc or not $abc)` หรือกฎที่จับเพียงขนาดไฟล์ลงชุด production เพราะอาจ match ไฟล์ทั่วไปจำนวนมากและสร้าง false positive
+- หน้าเว็บใช้ Firebase Authentication สำหรับเข้าสู่ระบบและสร้างบัญชีด้วยอีเมล; `login.html` เป็นหน้าแยก และ `index.html` เปลี่ยนเส้นทางไปหน้าเข้าสู่ระบบเมื่อไม่มี session. File upload, ผลสแกนใหม่, website-header check และ Wi-Fi report ตรวจ Firebase ID token; ผลสแกนใหม่ผูกกับ UID ผู้สร้างและมี Redis per-user rate limit. Scan เก่าก่อน migration ยังคงใช้ capability token. ให้คง API หลัง Tailscale/private network และห้ามเปิดพอร์ตสู่ public internet จนกว่าจะทำ public-deployment review ครบ
 - อย่าเก็บไฟล์ที่ตรวจพบไว้ให้ผู้ใช้ดาวน์โหลดจากเว็บ; รายงานเก็บเฉพาะ hash, metadata, findings และ remediation
 
-## 6. เริ่มระบบสแกนไฟล์ในเครื่อง
+## 6. การสแกนไฟล์ในเครื่องและผ่าน Backend
 
-ต้องติดตั้ง Docker Desktop พร้อม Docker Compose จากนั้นเปิด PowerShell ในโฟลเดอร์โปรเจกต์:
+**ไม่อัปโหลดไฟล์:** บน Windows ที่ Microsoft Defender Antivirus เปิดใช้งาน ให้ดาวน์โหลด `virus-scan.ps1` จากหน้าเว็บ แล้วเรียก PowerShell ด้วย `-ExecutionPolicy Bypass` สำหรับการเรียกครั้งนั้น เลือกไฟล์จากหน้าต่างที่เปิดขึ้น และนำเข้า `virus-scan-report.json` ในหน้าเว็บ หาก Defender ปิดใช้งาน ตัวช่วยจะหยุดก่อนเลือกไฟล์และไม่รายงานผลว่าไฟล์สะอาด ทั้งนี้ Defender อาจกักกัน/ลบไฟล์ตามการตั้งค่าของระบบ
+
+**สแกนผ่าน Backend:** ต้องติดตั้ง Docker Desktop พร้อม Docker Compose จากนั้นเปิด PowerShell ในโฟลเดอร์โปรเจกต์และเรียก:
 
 ```powershell
 docker compose up --build
 ```
 
-เปิด `http://localhost:8000` แล้วเลือกเมนู **สแกนไวรัส** ระบบจะดาวน์โหลด image และฐานข้อมูล ClamAV ในการเริ่มครั้งแรก ซึ่งอาจใช้เวลาหลายนาที ตรวจสุขภาพบริการได้ที่ `http://localhost:8000/api/v1/health` และ API docs อยู่ที่ `http://localhost:8000/api/docs`
+เปิด `http://localhost:8000` แล้วเลือกเมนู **สแกนไวรัส** และใช้เฉพาะส่วน Backend เมื่อต้องการส่งไฟล์เข้า quarantine เพื่อให้ ClamAV/YARA ตรวจ ระบบจะดาวน์โหลด image และฐานข้อมูล ClamAV ในการเริ่มครั้งแรก ซึ่งอาจใช้เวลาหลายนาที ตรวจสุขภาพบริการได้ที่ `http://localhost:8000/api/v1/health` และ API docs อยู่ที่ `http://localhost:8000/api/docs`
 
 หยุดระบบด้วย `Ctrl+C`; ใช้ `docker compose down` เพื่อหยุดและคงข้อมูล volume ไว้ อย่าใช้ `docker compose down -v` หากต้องการเก็บฐานข้อมูลและ signature cache
 
-ค่า `POSTGRES_PASSWORD` เริ่มต้นใน Compose มีไว้สำหรับการพัฒนาในเครื่องเท่านั้น ระบบยังไม่มี login/บัญชีผู้ใช้และการป้องกัน CSRF แบบ production อย่าเปิดให้เข้าถึงจากเครือข่ายสาธารณะ
+ค่า `POSTGRES_PASSWORD` เริ่มต้นใน Compose มีไว้สำหรับการพัฒนาในเครื่องเท่านั้น backend ยังไม่มี login/บัญชีผู้ใช้หรือการป้องกัน CSRF แบบ production อย่าเปิดให้เข้าถึงจากเครือข่ายสาธารณะ
+
+### Firebase Authentication ในหน้าเว็บและ API
+
+หน้าเว็บใช้ Firebase Authentication SDK สำหรับเข้าสู่ระบบและสร้างบัญชีด้วยอีเมลและรหัสผ่าน หน้าเข้าสู่ระบบอยู่ใน `login.html`; หน้าเว็บหลักใน `index.html` ตรวจสถานะ session และเปลี่ยนเส้นทางผู้ใช้ที่ยังไม่เข้าสู่ระบบ โดย config ของ Firebase Web App อยู่ในทั้งสองไฟล์และเป็น client config ไม่ใช่ service-account credential ใน Firebase Console ต้องเปิด Email/Password provider และเพิ่ม domain ที่ใช้โฮสต์ไว้ใน Authorized domains endpoint `POST /api/v1/wifi-reports` ตรวจ Firebase ID token; endpoint อัปโหลดไวรัสยังใช้ capability token สำหรับอ่านผลและไม่ได้ผูก scan กับบัญชีผู้ใช้ การเปลี่ยนเส้นทางหน้าเว็บ การซ่อนปุ่ม หรือการตั้ง CORS ไม่ใช่ authorization
+
+การส่งรายงาน Wi-Fi เป็น opt-in โดย checkbox; backend ตรวจ schema และส่งผลกลับโดยไม่บันทึก SSID หรือรายงานลงฐานข้อมูล หากไม่ยินยอม รายงานจะถูกวิเคราะห์ใน browser เท่านั้น ต้องตั้ง `FIREBASE_PROJECT_ID` ให้ตรงกับ Firebase Web App ก่อนใช้ endpoint นี้
+
+GitHub Pages ให้บริการเฉพาะไฟล์ static จึงไม่มี API สำหรับสแกนไฟล์ หน้าเว็บจะไม่ส่ง health requests บน `*.github.io` และจะแจ้งว่าไม่มี Backend; ตัวช่วย Defender และ Wi-Fi ยังทำงานในเครื่องได้ โดยลิงก์ดาวน์โหลดเป็น relative URL เพื่อรองรับ project site เช่น `/S/`. เมื่อใช้ Backend ให้เปิดหน้าเว็บจาก origin เดียวกับ API (เช่น `http://localhost:8000` หรือ URL จาก Tailscale Serve) หน้าเว็บจะใช้ API ที่ origin นั้นโดยอัตโนมัติ หลีกเลี่ยงการตั้ง API แยก origin บนหน้า public เพราะต้องเปิด CORS และอาจเผย endpoint ส่วนตัว
+
+ดูขั้นตอนติดตั้ง backend บน VPS และเชื่อม GitHub Pages ผ่าน Tailscale HTTPS ใน [DEPLOY-PRIVATE-VPS.md](./DEPLOY-PRIVATE-VPS.md). CORS allowlist ตั้งผ่าน `CORS_ORIGINS`; ค่าเริ่มต้นอนุญาตเฉพาะ `https://funnythirat.github.io` แต่ CORS ไม่ใช่ authentication และ API ต้องคงอยู่หลัง Tailscale Serve โดยไม่เปิด Tailscale Funnel
+
+### Deploy แบบ private บน VPS ผ่าน Tailscale
+
+ไฟล์ `docker-compose.production.yml` เป็น override สำหรับ VPS โดยบังคับตั้ง `POSTGRES_PASSWORD` และให้ API/worker รอ PostgreSQL กับ Redis ผ่าน health check ก่อนเริ่มงาน เริ่มด้วย Linux VPS ที่ติดตั้ง Docker Engine, Compose Plugin และ Tailscale แล้ว:
+
+1. ส่งเฉพาะ source ที่จำเป็นขึ้น VPS: `Dockerfile`, `docker-compose.yml`, `docker-compose.production.yml`, `requirements.txt`, `index.html`, `wifi-scan.ps1`, `virus-scan.ps1` และโฟลเดอร์ `backend`. ห้ามส่ง `.env` จากเครื่องพัฒนา, diagnostics bundle หรือไฟล์ secret
+2. ในโฟลเดอร์โปรเจกต์บน VPS สร้าง `.env` ที่มีเฉพาะรหัสผ่านฐานข้อมูล production สุ่มแบบ hex และจำกัดสิทธิ์ไฟล์:
+
+   ```bash
+   umask 077
+   printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -hex 32)" > .env
+   chmod 600 .env
+   ```
+
+   เก็บรหัสผ่านนี้ใน password manager/secret manager และอย่าเปลี่ยนค่าระหว่างใช้งานฐานข้อมูลเดิม มิฉะนั้น PostgreSQL ที่สร้างไว้แล้วจะไม่เปลี่ยนรหัสผ่านตาม environment โดยอัตโนมัติ
+3. ตรวจ merged Compose โดยไม่แสดง environment values แล้วเริ่มบริการ:
+
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.production.yml config --quiet
+   docker compose -f docker-compose.yml -f docker-compose.production.yml up -d --build
+   docker compose -f docker-compose.yml -f docker-compose.production.yml ps
+   ```
+4. ตรวจสุขภาพจาก VPS เอง:
+
+   ```bash
+   curl --fail http://127.0.0.1:8000/api/v1/health
+   ```
+
+   ก่อนแชร์เว็บ ต้องเห็น `status` เป็น `ready` และทุก service เป็น `true`
+5. ติดตั้ง/ล็อกอิน Tailscale บน VPS และอุปกรณ์ของผู้ใช้ จำกัด tailnet access ให้เฉพาะคนหรืออุปกรณ์ที่อนุญาต จากนั้นบน VPS รัน `tailscale serve 8000` เพื่อให้บริการผ่าน HTTPS ภายใน tailnet เท่านั้น ใช้ URL ที่ Tailscale แสดง ห้ามเปิด Tailscale Funnel, พอร์ต `8000`, PostgreSQL, Redis หรือ ClamAV สู่ public internet
+6. ทดสอบจากอุปกรณ์ที่อนุญาตและเชื่อม Tailscale แล้วเปิด URL ที่ Serve แสดง ตรวจ health และทดสอบ scan ไฟล์ที่ไม่มีข้อมูลลับ จากนั้นยืนยันว่ารายงานสำเร็จและไฟล์ quarantine ชั่วคราวถูกลบ
+
+การจำกัดด้วย Tailscale เป็นขอบเขตการเข้าถึงของ deployment ส่วนตัว ไม่ใช่ระบบบัญชีผู้ใช้ของแอป ผู้ที่อยู่ใน tailnet และมีสิทธิ์เข้าถึง URL สามารถใช้ API สแกนได้ จึงควรเชิญเฉพาะผู้ใช้ที่ไว้ใจ ตรวจ Tailscale ACL/device approval และสำรอง volume `postgres_data`, `clamav_data` และ `quarantine` อย่างปลอดภัย ก่อนเปิดให้บุคคลทั่วไปหรือกลุ่มที่ไม่ไว้ใจใช้ ต้องเพิ่ม authentication/authorization, per-user ownership, rate limits, retention controls และ production security review ก่อน
 
 รันชุดทดสอบ backend ใน PowerShell ด้วย:
 
@@ -199,7 +253,7 @@ tests/
   security/
 ```
 
-Frontend ปัจจุบันเป็น HTML ไฟล์เดียว ยังไม่มีการเชื่อม backend; ในขั้น MVP สามารถคงหน้าเดิมไว้และเปลี่ยนจากการตรวจใน browser เป็นการเรียก API เมื่อ backend พร้อม โดยแยก JavaScript/CSS เป็นไฟล์เมื่อเริ่มเพิ่มการทดสอบและฟีเจอร์
+Frontend แยกหน้าเข้าสู่ระบบ (`login.html`) ออกจากหน้าเว็บหลัก (`index.html`) และยังใช้ JavaScript/CSS ภายใน HTML; สามารถแยก asset ออกเป็นไฟล์เมื่อเริ่มเพิ่มการทดสอบและฟีเจอร์
 
 ## 8. แผนพัฒนาต่อและเกณฑ์รับงาน
 
@@ -234,13 +288,13 @@ Frontend ปัจจุบันเป็น HTML ไฟล์เดียว �
 
 **เกณฑ์รับงาน:** ทดสอบ package ที่รู้ว่ามี advisory และ package ที่ไม่มี advisory; ทดสอบไฟล์เสีย, ไฟล์ใหญ่ และไฟล์จำนวนมาก
 
-### ระยะ 4A — Virus scanning
+### ระยะ 4A — Virus scanning (implemented)
 
-- สแกนไฟล์อัปโหลดด้วย ClamAV และเพิ่ม YARA heuristic ในโหมดลึก
-- แสดง verdict, hash, engine, ข้อจำกัด และคำแนะนำตอบสนอง โดยไม่ลบไฟล์ต้นฉบับอัตโนมัติ
-- ทดสอบด้วย EICAR test file ซึ่งเป็นไฟล์ทดสอบมาตรฐานที่ไม่ใช่มัลแวร์จริง รวมถึงไฟล์สะอาด, ไฟล์ใหญ่, archive เสีย และ YARA heuristic fixture
+- API ส่งไฟล์เข้า quarantine และให้ Celery worker สแกนด้วย ClamAV ผ่าน clamd socket; โหมดลึกเพิ่ม YARA heuristic
+- API แสดง verdict, hash, engine, ข้อจำกัด และคำแนะนำ; worker ลบไฟล์ quarantine เมื่อ scan จบและเก็บไฟล์ไว้ระหว่าง retry
+- มี unit tests สำหรับ ClamAV response, YARA fixtures, upload limits และ retry; ควรทดสอบ EICAR, archive เสีย และการฟื้นตัวจาก worker/daemon failure ในสภาพแวดล้อม Docker ก่อน production
 
-**เกณฑ์รับงาน:** ทั้งสองโหมดให้สถานะ `queued/running/completed/failed` ถูกต้อง; ไฟล์ชั่วคราวถูกลบเมื่อจบงาน; การตรวจที่ engine ไม่พร้อมต้องแสดง error ไม่แสดงผล clean
+**เกณฑ์รับงาน:** ทั้งสองโหมดให้สถานะ `queued/running/completed/failed` ถูกต้อง; ไฟล์ชั่วคราวถูกลบเมื่อจบงาน; การตรวจที่ engine ไม่พร้อมต้อง retry ตามจำนวนครั้งที่กำหนดและสุดท้ายแสดง error ไม่แสดงผล clean
 
 ### ระยะ 5 — Dashboard และรายงาน
 
@@ -252,6 +306,6 @@ Frontend ปัจจุบันเป็น HTML ไฟล์เดียว �
 
 ## 9. ข้อเสนอแนะสำหรับการพัฒนาต่อ
 
-ต้นแบบมี file-scanning backend แล้ว แต่ยังไม่มีบัญชีผู้ใช้หรือ deployment hardening ก่อนเปิดใช้กับผู้ใช้หลายคนควรเพิ่ม authentication/authorization, scan ownership, CSRF controls, retention job, migrations, rate limits และทบทวน egress/network isolation รวมทั้งค่า resource limits ของ ClamAV/YARA worker
+ต้นแบบมี Firebase authentication/token verification, owner scoping สำหรับ scan ใหม่, และ Redis per-user rate limits สำหรับ API หลักแล้ว แต่ยังไม่พร้อมเปิด public โดยไม่จำกัด ก่อนให้ผู้ใช้นอก trusted tailnet เข้าถึง ต้องเพิ่ม email verification, quota/retention, monitoring/alerts, backup/restore drills, rate-limit และ resource-limit review, TLS/reverse proxy deployment, และ security review รวมทั้งทบทวน egress/network isolation และ resource limits ของ ClamAV/YARA worker. ต้อง apply database migration ก่อน deploy code ที่เพิ่ม owner UID
 
 เครื่องมือนี้เป็นตัวช่วยคัดกรอง ไม่ใช่การรับรองว่าระบบปลอดภัย การนำไปใช้งานจริงควรมีผู้รับผิดชอบด้านความปลอดภัยตรวจสอบ scope, network egress และการจัดการข้อมูลก่อนเปิดให้ผู้ใช้เข้าถึง
