@@ -556,8 +556,21 @@
     </main>
   </div>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
     "use strict";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAjyXKgx8Ox-s9tBsP2w2psXWM0EVUJCOk",
+      authDomain: "deea-9ed32.firebaseapp.com",
+      projectId: "deea-9ed32",
+      storageBucket: "deea-9ed32.firebasestorage.app",
+      messagingSenderId: "649361533233",
+      appId: "1:649361533233:web:a2f979984a76f67f222810"
+    };
+    const auth = getAuth(initializeApp(firebaseConfig));
 
     const state = {
       scans: 0,
@@ -592,6 +605,15 @@
     function apiUrl(path) {
       if (!apiBase) return null;
       return apiBase + "/api/v1/" + path.replace(/^\/+/, "");
+    }
+
+    async function authenticatedApiFetch(path, options = {}) {
+      const user = auth.currentUser;
+      if (!user) throw new Error("กรุณาเข้าสู่ระบบก่อนเชื่อมต่อ Backend");
+      const token = await user.getIdToken();
+      const headers = new Headers(options.headers || {});
+      headers.set("Authorization", "Bearer " + token);
+      return fetch(apiUrl(path), { ...options, headers });
     }
 
     function showView(name) {
@@ -1089,8 +1111,7 @@
       while (!job.finalized && transientErrors < 5) {
         await delay(1800);
         try {
-          const response = await fetch(apiUrl("virus-scans/" + encodeURIComponent(job.id)), {
-            headers: { "X-Scan-Token": job.token },
+          const response = await authenticatedApiFetch("virus-scans/" + encodeURIComponent(job.id), {
             cache: "no-store"
           });
           if (!response.ok) throw new Error("ไม่สามารถอ่านสถานะงานได้ (HTTP " + response.status + ")");
@@ -1204,6 +1225,31 @@
       const controller = new AbortController();
       const timeout = window.setTimeout(() => controller.abort(), 10000);
       try {
+        if (apiBase) {
+          const response = await authenticatedApiFetch("website-headers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: target.href }),
+            cache: "no-store",
+            signal: controller.signal
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.detail || "Backend ตอบกลับ HTTP " + response.status);
+          }
+          if (!Array.isArray(payload.findings) || typeof payload.status !== "number") {
+            throw new Error("รูปแบบผลลัพธ์จาก Backend ไม่ถูกต้อง");
+          }
+          findings.push(...payload.findings);
+          findings.push({
+            level: "info",
+            title: "ตรวจ HTTP HEAD ผ่าน Backend สำเร็จ",
+            detail: "ได้รับสถานะ HTTP " + payload.status
+          });
+          renderFindings(output, findings, "Backend ส่งคำขอ HEAD แบบ Passive หนึ่งครั้ง");
+          finishScan("website-headers", findings, target.href);
+          return;
+        }
         const response = await fetch(target.href, {
           method: "HEAD",
           mode: "cors",
@@ -1262,7 +1308,9 @@
       } catch (error) {
         const reason = error.name === "AbortError"
           ? "คำขอหมดเวลา: หยุดรอหลัง 10 วินาที"
-          : "Browser ไม่สามารถอ่านคำตอบได้ อาจเป็นเพราะเว็บไซต์ไม่อนุญาต CORS หรือปฏิเสธคำขอ HEAD";
+          : apiBase
+            ? "การเชื่อมต่อ Backend ไม่สำเร็จ: " + error.message
+            : "Browser ไม่สามารถอ่านคำตอบได้ อาจเป็นเพราะเว็บไซต์ไม่อนุญาต CORS หรือปฏิเสธคำขอ HEAD";
         const failedFindings = [{ level: "info", title: "ตรวจ headers ไม่สำเร็จ", detail: reason }];
         renderFindings(output, failedFindings);
         finishScan("website-headers", failedFindings, target.href);
@@ -1485,7 +1533,7 @@
             uploadForm.append("file", file, file.name);
             uploadForm.append("mode", mode);
             uploadForm.append("consent", "true");
-            const response = await fetch(apiUrl("virus-scans"), {
+            const response = await authenticatedApiFetch("virus-scans", {
               method: "POST",
               body: uploadForm,
               cache: "no-store"
@@ -1497,7 +1545,6 @@
             }
             const job = {
               ...payload.scan,
-              token: payload.access_token,
               finalized: false,
               message: "ส่งเข้าคิวแล้ว"
             };
@@ -1522,21 +1569,12 @@
     if (apiBase) window.setInterval(checkBackendHealth, 15000);
   </script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAjyXKgx8Ox-s9tBsP2w2psXWM0EVUJCOk",
-      authDomain: "deea-9ed32.firebaseapp.com",
-      projectId: "deea-9ed32",
-      storageBucket: "deea-9ed32.firebasestorage.app",
-      messagingSenderId: "649361533233",
-      appId: "1:649361533233:web:a2f979984a76f67f222810"
-    };
 
     const appShell = document.getElementById("appShell");
     try {
-      const app = initializeApp(firebaseConfig);
+      const app = getApp();
       const auth = getAuth(app);
       onAuthStateChanged(auth, (user) => {
         if (!user) {
