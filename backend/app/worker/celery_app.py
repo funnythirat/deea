@@ -22,6 +22,10 @@ celery_app.conf.update(
         "dispatch-pending-scans": {
             "task": "virus_scanner.dispatch_outbox",
             "schedule": 5.0,
-        }
+        },
+        "reap-stale-scans": {
+            "task": "virus_scanner.reap_stale_scans",
+            "schedule": 600.0,
+        },
     },
 )

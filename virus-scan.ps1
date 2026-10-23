@@ -32,13 +32,21 @@ $scanStartedAt = [DateTime]::UtcNow
 $scanResults = @()
 
 foreach ($path in $selectedFiles) {
-    $file = Get-Item -LiteralPath $path -ErrorAction Stop
     $fileResult = [ordered]@{
-        fileName = $file.Name
-        sizeBytes = $file.Length
+        fileName = [System.IO.Path]::GetFileName($path)
+        sizeBytes = 0
         status = "failed"
         error = $null
     }
+
+    try {
+        $file = Get-Item -LiteralPath $path -ErrorAction Stop
+    } catch {
+        $fileResult.error = "The selected file could not be read."
+        $scanResults += [pscustomobject]$fileResult
+        continue
+    }
+    $fileResult.sizeBytes = $file.Length
 
     try {
         Start-MpScan -ScanType CustomScan -ScanPath $file.FullName -ErrorAction Stop

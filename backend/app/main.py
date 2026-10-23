@@ -8,6 +8,7 @@ import os
 import socket
 import ssl
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
@@ -57,12 +58,72 @@ if not WIFI_HELPER.is_file():
 if not VIRUS_HELPER.is_file():
     VIRUS_HELPER = Path(__file__).resolve().parents[1] / "virus-scan.ps1"
 
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    initialize_database()
+    yield
+
+
 app = FastAPI(
     title="วิถีป้องกันรอบด้าน - File Scanner",
     version="1.0.0",
     docs_url="/api/docs",
     redoc_url=None,
+    lifespan=lifespan,
 )
+
+FIREBASE_AUTH_DOMAIN = f"https://{FIREBASE_PROJECT_ID}.firebaseapp.com" if FIREBASE_PROJECT_ID else ""
+CONTENT_SECURITY_POLICY = "; ".join(
+    [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://www.gstatic.com",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "connect-src 'self' https://identitytoolkit.googleapis.com "
+        "https://securetoken.googleapis.com https://api.osv.dev",
+        f"frame-src {FIREBASE_AUTH_DOMAIN}".strip() if FIREBASE_AUTH_DOMAIN else "frame-src 'none'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ]
+)
+SECURITY_HEADERS = [
+    (b"x-content-type-options", b"nosniff"),
+    (b"x-frame-options", b"DENY"),
+    (b"referrer-policy", b"strict-origin-when-cross-origin"),
+    (b"permissions-policy", b"camera=(), microphone=(), geolocation=(), payment=()"),
+    (b"cross-origin-opener-policy", b"same-origin-allow-popups"),
+]
+
+
+class SecurityHeadersMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                present = {key.lower() for key, _ in headers}
+                for key, value in SECURITY_HEADERS:
+                    if key not in present:
+                        headers.append((key, value))
+                content_type = next(
+                    (value for key, value in headers if key.lower() == b"content-type"), b""
+                )
+                if content_type.startswith(b"text/html") and b"content-security-policy" not in present:
+                    headers.append((b"content-security-policy", CONTENT_SECURITY_POLICY.encode("ascii")))
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
 
 
 class UploadRequestLimitMiddleware:
@@ -113,6 +174,7 @@ class UploadRequestLimitMiddleware:
 
 
 app.add_middleware(UploadRequestLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(CORS_ORIGINS),
@@ -249,6 +311,10 @@ class WifiReport(BaseModel):
         return value
 
 
+LEGACY_WIFI_AUTHENTICATION = frozenset({"SHARED", "WPA-NONE"})
+WPA1_AUTHENTICATION = frozenset({"WPA", "WPA-PSK", "WPA-PERSONAL", "WPA-ENTERPRISE"})
+
+
 def assess_wifi_report(report: WifiReport) -> list[dict[str, str]]:
     authentication = report.authentication.upper()
     cipher = report.cipher.upper()
@@ -258,7 +324,7 @@ def assess_wifi_report(report: WifiReport) -> list[dict[str, str]]:
         or authentication in {"OPEN", "NONE"}
         or cipher == "NONE"
     )
-    is_legacy = authentication in {"SHARED", "WPA-NONE"} or cipher.startswith("WEP")
+    is_legacy = authentication in LEGACY_WIFI_AUTHENTICATION or cipher.startswith("WEP")
     if is_open:
         findings.append(
             {
@@ -276,7 +342,7 @@ def assess_wifi_report(report: WifiReport) -> list[dict[str, str]]:
             }
         )
     if not is_open and not is_legacy:
-        if authentication in {"WPA", "WPA-PSK"}:
+        if authentication in WPA1_AUTHENTICATION:
             findings.append(
                 {
                     "level": "medium",
@@ -293,16 +359,17 @@ def assess_wifi_report(report: WifiReport) -> list[dict[str, str]]:
                 }
             )
     known_authentication = {
-        "OPEN", "SHARED", "WPA", "WPA-PSK", "WPA-NONE", "WPA2", "WPA2-PSK",
-        "WPA3", "WPA3-SAE", "WPA3-ENT", "WPA3-ENT-192",
+        "OPEN", "WPA2", "WPA2-PSK", "WPA3", "WPA3-SAE", "WPA3-ENT", "WPA3-ENT-192",
     }
+    known_authentication.update(LEGACY_WIFI_AUTHENTICATION)
+    known_authentication.update(WPA1_AUTHENTICATION)
     known_authentication.update(
         value
         for value in (authentication,)
         if value.startswith(("WPA2-", "WPA3-"))
     )
     known_ciphers = {
-        "NONE", "WEP40", "WEP104", "TKIP", "AES-CCMP", "GCMP", "GCMP-256",
+        "NONE", "WEP", "WEP40", "WEP104", "TKIP", "AES-CCMP", "GCMP", "GCMP-256",
         "CCMP", "CCMP-256", "BIP", "BIP-GMAC-128", "BIP-GMAC-256", "BIP-CMAC-256",
     }
     if authentication not in known_authentication or cipher not in known_ciphers:
@@ -417,7 +484,6 @@ def _head_public_url(target) -> tuple[int, dict[str, str]]:
             raw_socket.close()
 
 
-@app.on_event("startup")
 def initialize_database() -> None:
     QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
     os.chmod(QUARANTINE_DIR, 0o700)
@@ -468,6 +534,21 @@ def download_virus_helper():
     )
 
 
+WEBSITE_SECURITY_HEADERS = (
+    ("Content-Security-Policy", "medium", "กำหนด Content-Security-Policy เพื่อลดความเสี่ยงจากสคริปต์และเนื้อหาที่ไม่คาดหมาย"),
+    ("Strict-Transport-Security", "medium", "สำหรับเว็บไซต์ HTTPS ให้ตั้งค่า Strict-Transport-Security หลังตรวจสอบการรองรับโดเมนย่อย"),
+    ("X-Content-Type-Options", "low", "ตั้งค่า X-Content-Type-Options: nosniff เพื่อป้องกันการเดาชนิด MIME"),
+    ("Referrer-Policy", "low", "กำหนด Referrer-Policy เพื่อลดการส่ง URL อ้างอิงไปยังเว็บไซต์อื่น"),
+    ("Permissions-Policy", "low", "กำหนด Permissions-Policy เพื่อจำกัดการใช้ความสามารถของ browser"),
+)
+REPORTED_WEBSITE_HEADERS = tuple(name.lower() for name, _, _ in WEBSITE_SECURITY_HEADERS) + (
+    "x-frame-options",
+    "server",
+    "content-type",
+    "location",
+)
+
+
 @app.post("/api/v1/website-headers")
 def website_headers(
     payload: dict,
@@ -494,30 +575,42 @@ def website_headers(
         status_code, headers = _head_public_url(target)
     except HTTPException:
         raise
-    required = {
-        "content-security-policy": "Add Content-Security-Policy to reduce XSS risk",
-        "strict-transport-security": "Add HSTS when all HTTPS subdomains are supported",
-        "x-content-type-options": "Add X-Content-Type-Options: nosniff",
-        "referrer-policy": "Define a suitable Referrer-Policy",
-        "permissions-policy": "Define Permissions-Policy to limit browser features",
-    }
     findings = [
-        {"level": "medium", "title": "Missing " + header, "detail": advice}
-        for header, advice in required.items()
-        if header not in headers
+        {"level": level, "title": "ไม่พบ " + name, "detail": advice, "recommendation": advice}
+        for name, level, advice in WEBSITE_SECURITY_HEADERS
+        if name.lower() not in headers
+        and not (name == "Strict-Transport-Security" and target.scheme != "https")
     ]
+    if "x-frame-options" not in headers and "frame-ancestors" not in headers.get(
+        "content-security-policy", ""
+    ).lower():
+        findings.append(
+            {
+                "level": "medium",
+                "title": "ไม่พบการป้องกันการฝังหน้าเว็บ",
+                "detail": "ตั้งค่า X-Frame-Options หรือ directive frame-ancestors ใน Content-Security-Policy เพื่อช่วยลดความเสี่ยง clickjacking",
+            }
+        )
     if "server" in headers:
         findings.append(
-            {"level": "low", "title": "Server header exposed", "detail": "Consider reducing exposed version details"}
+            {
+                "level": "low",
+                "title": "เปิดเผยข้อมูล Server header",
+                "detail": "พบค่า Server: " + headers["server"][:200] + " พิจารณาลดข้อมูลรุ่นหรือรายละเอียดที่เปิดเผย",
+            }
         )
     if not findings:
         findings.append(
-            {"level": "info", "title": "No missing checked headers", "detail": "Checked with a backend HEAD request"}
+            {
+                "level": "info",
+                "title": "ไม่พบ header ที่ขาดจากรายการที่ตรวจ",
+                "detail": "ตรวจด้วยคำขอ HEAD จาก Backend หนึ่งครั้ง ไม่ใช่การรับรองว่าเว็บไซต์ปลอดภัย",
+            }
         )
     return {
         "url": target.geturl(),
         "status": status_code,
-        "headers": headers,
+        "headers": {name: headers[name] for name in REPORTED_WEBSITE_HEADERS if name in headers},
         "findings": findings,
     }
 

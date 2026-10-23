@@ -69,10 +69,10 @@ GitHub Pages ให้บริการหน้าเว็บแบบ static
 1. ผู้ใช้เลือกไฟล์, โหมดตรวจ และยืนยันสิทธิ์อัปโหลด
 2. Frontend ส่ง `POST /api/v1/virus-scans` เป็น `multipart/form-data`
 3. FastAPI จำกัดขนาด 20 MiB, สร้างชื่อไฟล์จาก UUID, คำนวณ SHA-256 และเก็บไฟล์ไว้ใน quarantine volume
-4. API สร้าง scan record และ outbox entry ใน transaction เดียว; Celery Beat ส่งงานจาก outbox ไป Redis และ retry งานที่ยัง queued; token สำหรับอ่านผลจะส่งกลับครั้งเดียวและเก็บไว้ใน browser memory
+4. API สร้าง scan record และ outbox entry ใน transaction เดียว; Celery Beat ส่งงานจาก outbox ไป Redis และ retry งานที่ยัง queued; scan ใหม่ผูกกับ Firebase UID ของผู้สร้าง และทุก 10 นาที Beat จะเปลี่ยนงานที่ค้าง `running` เกิน 6 ชั่วโมงหรือ `queued` เกิน 24 ชั่วโมงเป็น `failed` (`scan_timeout`) พร้อมลบไฟล์ quarantine ที่ไม่มีงานค้างอยู่
 5. Worker เปลี่ยนสถานะเป็น `running`; ClamAV ตรวจไฟล์ผ่าน clamd INSTREAM protocol และ deep mode เรียก YARA rules เพิ่ม
 6. Worker บันทึกผลและคำแนะนำลง PostgreSQL แล้วลบไฟล์ชั่วคราว
-7. Frontend อ่านสถานะ/ผลผ่าน `GET /api/v1/virus-scans/{scan_id}` พร้อม `X-Scan-Token`
+7. Frontend อ่านสถานะ/ผลผ่าน `GET /api/v1/virus-scans/{scan_id}` พร้อม Firebase ID token (scan เก่าก่อน migration ใช้ `X-Scan-Token`)
 
 สำหรับการสแกนในเครื่อง ผู้ใช้ดาวน์โหลด `virus-scan.ps1`, เรียกใช้บน Windows ที่เปิด Microsoft Defender Antivirus, เลือกไฟล์ผ่านหน้าต่าง native และนำเข้ารายงาน JSON ใน browser ไฟล์ที่เลือกและ path ไม่ถูกส่งไปยัง API; การอ่านรายงานเป็น local file operation
 
@@ -94,7 +94,7 @@ GitHub Pages ให้บริการหน้าเว็บแบบ static
 | `GET` | `/wifi-scan.ps1` | ดาวน์โหลดตัวช่วยอ่านข้อมูล Wi-Fi ในเครื่อง Windows |
 | `GET` | `/virus-scan.ps1` | ดาวน์โหลดตัวช่วยสแกนไฟล์ด้วย Microsoft Defender ในเครื่อง |
 | `POST` | `/api/v1/virus-scans` | อัปโหลดไฟล์, เลือกโหมด `standard`/`deep` และสร้างงาน |
-| `GET` | `/api/v1/virus-scans/{scan_id}` | อ่านสถานะและผลโดยส่ง `X-Scan-Token` |
+| `GET` | `/api/v1/virus-scans/{scan_id}` | อ่านสถานะและผลด้วย Firebase ID token ของเจ้าของ (scan เก่าใช้ `X-Scan-Token`) |
 | `POST` | `/api/v1/wifi-reports` | รับและวิเคราะห์ JSON จากตัวช่วย Wi-Fi; ต้องใช้ Firebase ID token และไม่เก็บ SSID ในฐานข้อมูล |
 
 Virus scan และ Wi-Fi report APIs ใช้งานได้; endpoints สำหรับ asset/website scans ในตารางเดิมเป็นแนวทางต่อยอดและยังไม่ได้ implement
