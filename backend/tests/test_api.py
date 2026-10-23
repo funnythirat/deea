@@ -335,6 +335,7 @@ class VirusScanApiTests(unittest.TestCase):
             "content-type": "text/html",
             "server": "test",
             "set-cookie": "session=secret",
+            "location": "https://example.com/next?token=secret",
             "x-content-type-options": "nosniff",
         }
         with patch.object(main, "_head_public_url", return_value=(200, target_headers)):
@@ -343,6 +344,7 @@ class VirusScanApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertNotIn("set-cookie", payload["headers"])
+        self.assertNotIn("location", payload["headers"])
         self.assertEqual(payload["headers"]["x-content-type-options"], "nosniff")
         titles = [finding["title"] for finding in payload["findings"]]
         self.assertIn("ไม่พบ Content-Security-Policy", titles)
@@ -395,10 +397,17 @@ class VirusScanApiTests(unittest.TestCase):
         active_file = self.quarantine / "active-scan"
         active_file.write_bytes(b"active")
         main.os.utime(active_file, os_times)
+        legacy_file = self.quarantine / "legacy-running"
+        legacy_file.write_bytes(b"legacy")
+        recent_file = self.quarantine / "recently-started"
+        recent_file.write_bytes(b"recent")
+        now = main.datetime.now(main.timezone.utc)
         with self.TestSession() as db:
-            for scan_id, status, created_at, path in (
-                ("stale-scan", "running", old, stale_file),
-                ("active-scan", "queued", main.datetime.now(main.timezone.utc), active_file),
+            for scan_id, status, created_at, started_at, path in (
+                ("stale-scan", "running", old, old, stale_file),
+                ("legacy-running", "running", old, None, legacy_file),
+                ("recently-started", "running", old, now, recent_file),
+                ("active-scan", "queued", now, None, active_file),
             ):
                 db.add(
                     VirusScan(
@@ -411,6 +420,7 @@ class VirusScanApiTests(unittest.TestCase):
                         mode="standard",
                         status=status,
                         created_at=created_at,
+                        started_at=started_at,
                     )
                 )
             db.commit()
@@ -421,15 +431,134 @@ class VirusScanApiTests(unittest.TestCase):
         ):
             reaped = tasks.reap_stale_scans.run()
 
-        self.assertEqual(reaped, 1)
+        self.assertEqual(reaped, 2)
         with self.TestSession() as db:
             stale = db.get(VirusScan, "stale-scan")
             self.assertEqual(stale.status, "failed")
             self.assertEqual(stale.error_code, "scan_timeout")
+            self.assertEqual(db.get(VirusScan, "legacy-running").status, "failed")
+            self.assertEqual(db.get(VirusScan, "recently-started").status, "running")
             self.assertEqual(db.get(VirusScan, "active-scan").status, "queued")
         self.assertFalse(stale_file.exists())
+        self.assertFalse(legacy_file.exists())
+        self.assertTrue(recent_file.exists())
         self.assertFalse(orphan.exists())
         self.assertTrue(active_file.exists())
+
+    def test_reaper_keeps_upload_when_commit_fails(self):
+        old = main.datetime.now(main.timezone.utc).replace(year=2020)
+        upload = self.quarantine / "commit-fails"
+        upload.write_bytes(b"sample")
+        with self.TestSession() as db:
+            db.add(
+                VirusScan(
+                    id="commit-fails",
+                    owner_uid="test-user",
+                    filename="sample.txt",
+                    file_path=str(upload),
+                    sha256="0" * 64,
+                    size_bytes=6,
+                    mode="standard",
+                    status="queued",
+                    created_at=old,
+                )
+            )
+            db.commit()
+
+        with (
+            patch.object(tasks, "SessionLocal", self.TestSession),
+            patch.object(tasks, "QUARANTINE_DIR", self.quarantine),
+            patch("sqlalchemy.orm.Session.commit", side_effect=RuntimeError("db down")),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "db down"):
+                tasks.reap_stale_scans.run()
+
+        self.assertTrue(upload.exists())
+        with self.TestSession() as db:
+            self.assertEqual(db.get(VirusScan, "commit-fails").status, "queued")
+
+    def test_scan_result_is_not_saved_over_reaped_status(self):
+        scan_id = "reaped-during-scan"
+        file_path = self.quarantine / scan_id
+        file_path.write_bytes(b"sample")
+        with self.TestSession() as db:
+            db.add(
+                VirusScan(
+                    id=scan_id,
+                    owner_uid="test-user",
+                    filename="sample.txt",
+                    file_path=str(file_path),
+                    sha256="0" * 64,
+                    size_bytes=6,
+                    mode="standard",
+                    status="queued",
+                )
+            )
+            db.commit()
+
+        def reaped_while_scanning(path, mode):
+            with self.TestSession() as db:
+                scan = db.get(VirusScan, scan_id)
+                self.assertIsNotNone(scan.started_at)
+                scan.status = "failed"
+                scan.error_code = "scan_timeout"
+                db.commit()
+            return {"verdict": "no_detection"}
+
+        with (
+            patch.object(tasks, "SessionLocal", self.TestSession),
+            patch.object(tasks, "scan_file", side_effect=reaped_while_scanning),
+        ):
+            tasks.scan_virus_file.run(scan_id)
+
+        with self.TestSession() as db:
+            scan = db.get(VirusScan, scan_id)
+            self.assertEqual(scan.status, "failed")
+            self.assertEqual(scan.error_code, "scan_timeout")
+            self.assertIsNone(scan.result)
+
+    def test_started_at_column_is_added_to_existing_table(self):
+        legacy_engine = create_engine("sqlite://")
+        with legacy_engine.begin() as connection:
+            connection.execute(main.text("CREATE TABLE virus_scans (id VARCHAR(36) PRIMARY KEY)"))
+
+        main.ensure_virus_scan_columns(legacy_engine)
+        main.ensure_virus_scan_columns(legacy_engine)
+
+        columns = {column["name"] for column in main.inspect(legacy_engine).get_columns("virus_scans")}
+        self.assertIn("started_at", columns)
+
+    def test_pages_load_scripts_and_styles_from_same_origin_assets(self):
+        for page, assets in (
+            ("/", ("assets/index.css", "assets/app.js", "assets/auth-guard.js")),
+            ("/login.html", ("assets/login.css", "assets/login.js")),
+        ):
+            html = self.client.get(page).text
+            self.assertNotIn("<style>", html)
+            self.assertNotIn('<script type="module">', html)
+            self.assertNotIn('style="', html)
+            for asset in assets:
+                self.assertIn(asset, html)
+                response = self.client.get("/" + asset)
+                self.assertEqual(response.status_code, 200, asset)
+                self.assertTrue(response.text.strip())
+
+        self.assertTrue(self.client.get("/assets/app.js").headers["content-type"].startswith("text/javascript"))
+        self.assertTrue(self.client.get("/assets/index.css").headers["content-type"].startswith("text/css"))
+        self.assertEqual(self.client.get("/assets/missing.js").status_code, 404)
+        self.assertEqual(self.client.get("/assets/..%2Fbackend%2Fapp%2Fmain.py").status_code, 404)
+        self.assertEqual(self.client.get("/assets/notes.txt").status_code, 404)
+
+    def test_api_docs_get_their_own_content_security_policy(self):
+        page_csp = self.client.get("/").headers["content-security-policy"]
+        self.assertNotIn("unsafe-inline", page_csp)
+
+        docs = self.client.get("/api/docs")
+        self.assertEqual(docs.status_code, 200)
+        docs_csp = docs.headers["content-security-policy"]
+        self.assertIn("https://cdn.jsdelivr.net", docs_csp)
+        self.assertIn("frame-ancestors 'none'", docs_csp)
+        self.assertEqual(docs.headers["x-frame-options"], "DENY")
 
     def test_wifi_report_requires_firebase_authentication(self):
         main.app.dependency_overrides.pop(main.require_firebase_user)

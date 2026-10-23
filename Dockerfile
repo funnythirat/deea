@@ -31,6 +31,7 @@ COPY backend/app ./app
 COPY backend/rules ./rules
 COPY index.html ./static/index.html
 COPY login.html ./static/login.html
+COPY assets ./static/assets
 COPY wifi-scan.ps1 ./wifi-scan.ps1
 COPY virus-scan.ps1 ./virus-scan.ps1
 
