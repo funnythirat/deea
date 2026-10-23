@@ -129,3 +129,60 @@ def scan_virus_file(self, scan_id: str) -> None:
                 path.unlink(missing_ok=True)
             except OSError:
                 logger.exception("Could not remove quarantined upload for scan %s", scan_id)
+
+
+STALE_RUNNING_SECONDS = 6 * 60 * 60
+STALE_QUEUED_SECONDS = 24 * 60 * 60
+ORPHAN_FILE_SECONDS = 60 * 60
+
+
+@celery_app.task(name="virus_scanner.reap_stale_scans")
+def reap_stale_scans() -> int:
+    now = datetime.now(timezone.utc)
+    running_cutoff = datetime.fromtimestamp(now.timestamp() - STALE_RUNNING_SECONDS, timezone.utc)
+    queued_cutoff = datetime.fromtimestamp(now.timestamp() - STALE_QUEUED_SECONDS, timezone.utc)
+    reaped = 0
+    with SessionLocal() as db:
+        stale = db.scalars(
+            select(VirusScan)
+            .where(
+                or_(
+                    and_(VirusScan.status == "running", VirusScan.created_at <= running_cutoff),
+                    and_(VirusScan.status == "queued", VirusScan.created_at <= queued_cutoff),
+                )
+            )
+            .limit(100)
+            .with_for_update(skip_locked=True)
+        ).all()
+        for scan in stale:
+            scan.status = "failed"
+            scan.error_code = "scan_timeout"
+            scan.completed_at = now
+            try:
+                Path(scan.file_path).unlink(missing_ok=True)
+            except OSError:
+                logger.exception("Could not remove quarantined upload for stale scan %s", scan.id)
+            reaped += 1
+        db.commit()
+
+        if QUARANTINE_DIR.is_dir():
+            active_ids = set(
+                db.scalars(
+                    select(VirusScan.id).where(VirusScan.status.in_(("queued", "running")))
+                ).all()
+            )
+            file_cutoff = now.timestamp() - ORPHAN_FILE_SECONDS
+            for path in QUARANTINE_DIR.iterdir():
+                try:
+                    if (
+                        path.is_file()
+                        and path.name not in active_ids
+                        and path.stat().st_mtime < file_cutoff
+                    ):
+                        path.unlink()
+                        logger.warning("Removed orphaned quarantine file %s", path.name)
+                except OSError:
+                    logger.exception("Could not remove orphaned quarantine file %s", path.name)
+    if reaped:
+        logger.warning("Marked %s stale scans as failed", reaped)
+    return reaped

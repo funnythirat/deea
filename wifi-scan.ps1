@@ -27,10 +27,30 @@ if ($LASTEXITCODE -ne 0) {
     throw "Wi-Fi command failed"
 }
 
-$state = Get-NetshValue -Lines $lines -Label "State"
-if (-not $state -or $state -notmatch "connected") {
+$blocks = @()
+$currentBlock = @()
+foreach ($line in $lines) {
+    if ([string]::IsNullOrWhiteSpace($line)) {
+        if ($currentBlock.Count -gt 0) { $blocks += ,$currentBlock }
+        $currentBlock = @()
+    } else {
+        $currentBlock += $line
+    }
+}
+if ($currentBlock.Count -gt 0) { $blocks += ,$currentBlock }
+
+$connectedBlock = $null
+foreach ($block in $blocks) {
+    $blockState = Get-NetshValue -Lines $block -Label "State"
+    if ($blockState -and $blockState.Trim() -ieq "connected") {
+        $connectedBlock = $block
+        break
+    }
+}
+if ($null -eq $connectedBlock) {
     throw "No connected Wi-Fi network was found"
 }
+$lines = $connectedBlock
 
 $ssid = Get-NetshValue -Lines $lines -Label "SSID"
 $authentication = Get-NetshValue -Lines $lines -Label "Authentication"

@@ -11,9 +11,8 @@ CLAMD_HOST = os.getenv("CLAMD_HOST", "localhost")
 CLAMD_PORT = int(os.getenv("CLAMD_PORT", "3310"))
 QUARANTINE_DIR = Path(os.getenv("QUARANTINE_DIR", "./data/quarantine")).resolve()
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(20 * 1024 * 1024)))
-YARA_RULES_PATH = Path(
-    os.getenv("YARA_RULES_PATH", "./backend/rules/basic_indicators.yar")
-).resolve()
+DEFAULT_YARA_RULES_PATH = Path(__file__).resolve().parents[1] / "rules" / "basic_indicators.yar"
+YARA_RULES_PATH = Path(os.getenv("YARA_RULES_PATH", str(DEFAULT_YARA_RULES_PATH))).resolve()
 CORS_ORIGINS = tuple(
     origin.strip()
     for origin in os.getenv(

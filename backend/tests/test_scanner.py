@@ -124,6 +124,12 @@ class ScannerTests(unittest.TestCase):
 
         self.assertEqual(matches, [])
 
+    def test_default_yara_rules_path_does_not_depend_on_working_directory(self):
+        from app import config
+
+        self.assertTrue(config.DEFAULT_YARA_RULES_PATH.is_file())
+        self.assertTrue(config.DEFAULT_YARA_RULES_PATH.is_absolute())
+
 
 if __name__ == "__main__":
     unittest.main()

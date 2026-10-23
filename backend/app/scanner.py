@@ -69,10 +69,22 @@ def _clamav_scan(path: Path) -> tuple[str, str | None]:
     raise ScannerUnavailableError("ClamAV returned an unexpected response")
 
 
+_compiled_rules: tuple[tuple[str, int], "yara.Rules"] | None = None
+
+
+def _load_yara_rules() -> "yara.Rules":
+    global _compiled_rules
+    stat = YARA_RULES_PATH.stat()
+    key = (str(YARA_RULES_PATH), stat.st_mtime_ns)
+    if _compiled_rules is None or _compiled_rules[0] != key:
+        rules_source = YARA_RULES_PATH.read_text(encoding="utf-8")
+        _compiled_rules = (key, yara.compile(source=rules_source))
+    return _compiled_rules[1]
+
+
 def _yara_scan(path: Path) -> list[dict[str, str]]:
     try:
-        rules_source = YARA_RULES_PATH.read_text(encoding="utf-8")
-        rules = yara.compile(source=rules_source)
+        rules = _load_yara_rules()
         matches = rules.match(filepath=str(path), timeout=15)
     except (yara.Error, OSError, TimeoutError) as error:
         raise ScannerUnavailableError("YARA scan could not be completed") from error

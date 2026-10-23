@@ -330,6 +330,107 @@ class VirusScanApiTests(unittest.TestCase):
         self.assertEqual(response.json()["status"], 302)
         request.assert_called_once()
 
+    def test_website_headers_reports_only_checked_headers_in_thai(self):
+        target_headers = {
+            "content-type": "text/html",
+            "server": "test",
+            "set-cookie": "session=secret",
+            "x-content-type-options": "nosniff",
+        }
+        with patch.object(main, "_head_public_url", return_value=(200, target_headers)):
+            response = self.client.post("/api/v1/website-headers", json={"url": "http://example.com"})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertNotIn("set-cookie", payload["headers"])
+        self.assertEqual(payload["headers"]["x-content-type-options"], "nosniff")
+        titles = [finding["title"] for finding in payload["findings"]]
+        self.assertIn("ไม่พบ Content-Security-Policy", titles)
+        self.assertIn("ไม่พบการป้องกันการฝังหน้าเว็บ", titles)
+        self.assertNotIn("ไม่พบ Strict-Transport-Security", titles)
+        self.assertNotIn("ไม่พบ X-Content-Type-Options", titles)
+
+    def test_wifi_report_flags_windows_wpa_personal_as_legacy_wpa(self):
+        report = {
+            "schemaVersion": 1,
+            "capturedAtUtc": "2026-10-19T12:00:00Z",
+            "interfaceName": "netsh wlan",
+            "ssid": "test-network",
+            "signalQualityPercent": 80,
+            "authentication": "WPA-Personal",
+            "cipher": "CCMP",
+            "securityEnabled": True,
+            "enterpriseAuthentication": False,
+        }
+
+        response = self.client.post("/api/v1/wifi-reports", json=report)
+
+        self.assertEqual(response.status_code, 200)
+        findings = response.json()["findings"]
+        self.assertEqual(findings[0]["level"], "medium")
+        self.assertEqual(findings[0]["title"], "ใช้ WPA รุ่นเก่า")
+        self.assertNotIn("ข้อมูลความปลอดภัยบางส่วนยังประเมินไม่ได้", [f["title"] for f in findings])
+
+    def test_pages_include_security_headers(self):
+        response = self.client.get("/")
+
+        self.assertEqual(response.headers["x-content-type-options"], "nosniff")
+        self.assertEqual(response.headers["x-frame-options"], "DENY")
+        csp = response.headers["content-security-policy"]
+        self.assertIn("frame-ancestors 'none'", csp)
+        self.assertIn("https://www.gstatic.com", csp)
+
+        api_response = self.client.get("/api/v1/virus-scans/missing")
+        self.assertEqual(api_response.headers["x-content-type-options"], "nosniff")
+        self.assertNotIn("content-security-policy", api_response.headers)
+
+    def test_reaper_fails_stale_scans_and_removes_orphaned_files(self):
+        old = main.datetime.now(main.timezone.utc).replace(year=2020)
+        stale_file = self.quarantine / "stale-scan"
+        stale_file.write_bytes(b"stale")
+        orphan = self.quarantine / "orphan"
+        orphan.write_bytes(b"orphan")
+        os_times = (old.timestamp(), old.timestamp())
+        main.os.utime(orphan, os_times)
+        active_file = self.quarantine / "active-scan"
+        active_file.write_bytes(b"active")
+        main.os.utime(active_file, os_times)
+        with self.TestSession() as db:
+            for scan_id, status, created_at, path in (
+                ("stale-scan", "running", old, stale_file),
+                ("active-scan", "queued", main.datetime.now(main.timezone.utc), active_file),
+            ):
+                db.add(
+                    VirusScan(
+                        id=scan_id,
+                        owner_uid="test-user",
+                        filename="sample.txt",
+                        file_path=str(path),
+                        sha256="0" * 64,
+                        size_bytes=5,
+                        mode="standard",
+                        status=status,
+                        created_at=created_at,
+                    )
+                )
+            db.commit()
+
+        with (
+            patch.object(tasks, "SessionLocal", self.TestSession),
+            patch.object(tasks, "QUARANTINE_DIR", self.quarantine),
+        ):
+            reaped = tasks.reap_stale_scans.run()
+
+        self.assertEqual(reaped, 1)
+        with self.TestSession() as db:
+            stale = db.get(VirusScan, "stale-scan")
+            self.assertEqual(stale.status, "failed")
+            self.assertEqual(stale.error_code, "scan_timeout")
+            self.assertEqual(db.get(VirusScan, "active-scan").status, "queued")
+        self.assertFalse(stale_file.exists())
+        self.assertFalse(orphan.exists())
+        self.assertTrue(active_file.exists())
+
     def test_wifi_report_requires_firebase_authentication(self):
         main.app.dependency_overrides.pop(main.require_firebase_user)
         response = self.client.post(

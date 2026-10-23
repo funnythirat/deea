@@ -596,11 +596,17 @@
     const navButtons = document.querySelectorAll("[data-view]");
     const configuredApiBase = document.querySelector('meta[name="scanner-api-base"]').content.trim();
     const isGitHubPages = location.hostname.endsWith(".github.io");
-    const apiBase = configuredApiBase
+    const isLocalBackend = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+    const apiBase = isLocalBackend
+      ? location.origin
+      : configuredApiBase
       ? new URL(configuredApiBase, location.href).href.replace(/\/+$/, "")
       : isGitHubPages || location.protocol === "file:"
         ? null
         : location.origin;
+
+    const LEGACY_WIFI_AUTHENTICATION = ["SHARED", "WPA-NONE"];
+    const WPA1_AUTHENTICATION = ["WPA", "WPA-PSK", "WPA-PERSONAL", "WPA-ENTERPRISE"];
 
     function apiUrl(path) {
       if (!apiBase) return null;
@@ -661,8 +667,7 @@
         const cipher = report.cipher.toUpperCase();
         const findings = [];
         const isOpen = !report.securityEnabled || authentication === "OPEN" || cipher === "NONE";
-        const isLegacy = authentication === "SHARED" ||
-          authentication === "WPA-NONE" ||
+        const isLegacy = LEGACY_WIFI_AUTHENTICATION.includes(authentication) ||
           cipher.startsWith("WEP");
         if (isOpen) {
           findings.push({
@@ -679,7 +684,7 @@
         }
 
         if (!isOpen && !isLegacy) {
-          if (authentication === "WPA" || authentication === "WPA-PSK") {
+          if (WPA1_AUTHENTICATION.includes(authentication)) {
             findings.push({
               level: "medium",
               title: "ใช้ WPA รุ่นเก่า",
@@ -696,11 +701,9 @@
         }
 
         const recognizedAuthentication = [
+          ...LEGACY_WIFI_AUTHENTICATION,
+          ...WPA1_AUTHENTICATION,
           "OPEN",
-          "SHARED",
-          "WPA",
-          "WPA-PSK",
-          "WPA-NONE",
           "WPA2",
           "WPA2-PSK",
           "WPA3",
@@ -710,6 +713,7 @@
         ].includes(authentication);
         const recognizedCipher = [
           "NONE",
+          "WEP",
           "WEP40",
           "WEP104",
           "TKIP",
