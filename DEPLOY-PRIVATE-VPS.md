@@ -62,13 +62,13 @@ The address must return the same healthy JSON. A short or incomplete `*.ts.net` 
 
 ## 3. Connect GitHub Pages to the private API
 
-In the repository's `index.html`, set the `scanner-api-base` meta tag to the exact HTTPS origin from Tailscale Serve, with no trailing path. The Pages source currently uses `https://desktop-hubjhjb.tailc7972e.ts.net`; replace it if `tailscale serve status` on the backend machine shows another name:
+The GitHub Pages frontend currently has no Backend URL configured, so backend-dependent features stay unavailable. Only after the private API reports `status: ready` and is reachable from a device on the same tailnet, set the `scanner-api-base` meta tag in `index.html` to the exact HTTPS origin shown by `tailscale serve status`, with no trailing path:
 
 ```html
 <meta name="scanner-api-base" content="https://scanner.example-tailnet.ts.net">
 ```
 
-Commit and push that frontend change. The API CORS allowlist defaults to the exact GitHub Pages origin `https://funnythirat.github.io`; configure `CORS_ORIGINS` in `.env` only if the frontend has an additional known origin.
+Commit and push that frontend change. The API CORS allowlist defaults to the exact GitHub Pages origin `https://funnythirat.github.io`; configure `CORS_ORIGINS` in `.env` only if the frontend has an additional known origin. Do not set a placeholder, incomplete MagicDNS name, or URL for a server that has not passed the health check.
 
 All devices using the scanner API must be signed in to the same tailnet. GitHub Pages itself is public, but the API host remains private. CORS is browser policy, not authentication; tailnet access remains an additional network boundary. File uploads, scan-result reads for new scans, website-header checks, and Wi-Fi reports require a valid Firebase ID token; scan results are scoped to the creating UID. Redis-backed per-user rate limits protect these API operations. Historical scans created before the ownership migration remain accessible only with their original capability token. This does not constitute a complete public deployment review: do not enable Funnel or expose the API publicly until email verification, quotas/retention, monitoring, backups, and an external security review are addressed.
 

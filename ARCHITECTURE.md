@@ -1,6 +1,12 @@
 # สถาปัตยกรรมระบบสแกนความปลอดภัย
 
-เอกสารนี้อธิบายหน้าเข้าสู่ระบบใน [login.html](./login.html), เว็บหลักใน [index.html](./index.html), การตรวจ Wi-Fi ในเครื่องด้วย PowerShell, การสแกนไฟล์ในเครื่องด้วย Microsoft Defender และ backend สำหรับสแกนไฟล์ด้วย ClamAV/YARA ผ่าน FastAPI, Celery, Redis และ PostgreSQL
+เอกสารนี้อธิบายเว็บต้นแบบใน [index.html](./index.html), การตรวจ Wi-Fi ในเครื่องด้วย PowerShell, การสแกนไฟล์ในเครื่องด้วย Microsoft Defender และ backend สำหรับสแกนไฟล์ด้วย ClamAV/YARA ผ่าน FastAPI, Celery, Redis และ PostgreSQL.
+
+## สถานะการใช้งานปัจจุบัน
+
+GitHub Pages ให้บริการหน้าเว็บแบบ static เท่านั้น และไม่มี Backend ที่เชื่อมต่ออยู่ในค่าเริ่มต้น หน้า Dashboard กำหนดให้เข้าสู่ระบบด้วย Firebase Authentication; หลังเข้าสู่ระบบจึงใช้การวิเคราะห์ซอร์สโค้ดใน browser, ตรวจ npm dependency ผ่าน OSV, วิเคราะห์รายงาน Wi-Fi และแสดงรายงาน Microsoft Defender ได้ ส่วนการสแกน ClamAV/YARA และการตรวจเว็บไซต์ผ่าน Backend ต้องมี API/worker ที่เปิดใช้งานและกำหนด `scanner-api-base` ก่อน บัญชี Firebase ไม่ได้เปิด Backend ให้เอง
+
+หน้าเว็บไม่มีการเปิด Firebase Analytics; โค้ดที่เลือกตรวจและรายงาน Wi-Fi/Defender ประมวลผลใน browser โดยไม่อัปโหลดอัตโนมัติ ชื่อ/เวอร์ชัน dependency จะส่งไปยัง OSV เมื่อผู้ใช้กดยินยอม และไฟล์ไวรัสจะอัปโหลดเมื่อผู้ใช้สั่งสแกนผ่าน Backend ที่ตั้งค่าไว้
 
 ## 1. เป้าหมายและขอบเขต
 
@@ -154,15 +160,15 @@ docker compose up --build
 
 หยุดระบบด้วย `Ctrl+C`; ใช้ `docker compose down` เพื่อหยุดและคงข้อมูล volume ไว้ อย่าใช้ `docker compose down -v` หากต้องการเก็บฐานข้อมูลและ signature cache
 
-ค่า `POSTGRES_PASSWORD` เริ่มต้นใน Compose มีไว้สำหรับการพัฒนาในเครื่องเท่านั้น backend ยังไม่มี login/บัญชีผู้ใช้หรือการป้องกัน CSRF แบบ production อย่าเปิดให้เข้าถึงจากเครือข่ายสาธารณะ
+ค่า `POSTGRES_PASSWORD` เริ่มต้นใน Compose มีไว้สำหรับการพัฒนาในเครื่องเท่านั้น API ที่รับข้อมูลสแกนตรวจ Firebase ID token และจำกัดอัตราคำขอต่อผู้ใช้ แต่ยังไม่มี email verification, quota/retention, monitoring, backups และ external security review ครบถ้วน อย่าเปิด API ให้เข้าถึงจากเครือข่ายสาธารณะ
 
 ### Firebase Authentication ในหน้าเว็บและ API
 
-หน้าเว็บใช้ Firebase Authentication SDK สำหรับเข้าสู่ระบบและสร้างบัญชีด้วยอีเมลและรหัสผ่าน หน้าเข้าสู่ระบบอยู่ใน `login.html`; หน้าเว็บหลักใน `index.html` ตรวจสถานะ session และเปลี่ยนเส้นทางผู้ใช้ที่ยังไม่เข้าสู่ระบบ โดย config ของ Firebase Web App อยู่ในทั้งสองไฟล์และเป็น client config ไม่ใช่ service-account credential ใน Firebase Console ต้องเปิด Email/Password provider และเพิ่ม domain ที่ใช้โฮสต์ไว้ใน Authorized domains endpoint `POST /api/v1/wifi-reports` ตรวจ Firebase ID token; endpoint อัปโหลดไวรัสยังใช้ capability token สำหรับอ่านผลและไม่ได้ผูก scan กับบัญชีผู้ใช้ การเปลี่ยนเส้นทางหน้าเว็บ การซ่อนปุ่ม หรือการตั้ง CORS ไม่ใช่ authorization
+หน้าเว็บใช้ Firebase Authentication SDK สำหรับเข้าสู่ระบบและสร้างบัญชีด้วยอีเมลและรหัสผ่าน หน้าเข้าสู่ระบบอยู่ใน `login.html`; หน้าเว็บหลักใน `index.html` ตรวจสถานะ session และเปลี่ยนเส้นทางผู้ใช้ที่ยังไม่เข้าสู่ระบบ โดย config ของ Firebase Web App อยู่ในทั้งสองไฟล์และเป็น client config ไม่ใช่ service-account credential ใน Firebase Console ต้องเปิด Email/Password provider และเพิ่ม domain ที่ใช้โฮสต์ไว้ใน Authorized domains endpoint สำหรับอัปโหลดไวรัส, ตรวจเว็บไซต์, รายงาน Wi-Fi และ AI ต้องตรวจ Firebase ID token; scan ใหม่ผูกกับ UID ของผู้ใช้ ส่วน scan เก่าก่อน migration ใช้ capability token เดิม การเปลี่ยนเส้นทางหน้าเว็บ การซ่อนปุ่ม หรือการตั้ง CORS ไม่ใช่ authorization
 
 การส่งรายงาน Wi-Fi เป็น opt-in โดย checkbox; backend ตรวจ schema และส่งผลกลับโดยไม่บันทึก SSID หรือรายงานลงฐานข้อมูล หากไม่ยินยอม รายงานจะถูกวิเคราะห์ใน browser เท่านั้น ต้องตั้ง `FIREBASE_PROJECT_ID` ให้ตรงกับ Firebase Web App ก่อนใช้ endpoint นี้
 
-GitHub Pages ให้บริการเฉพาะไฟล์ static จึงไม่มี API สำหรับสแกนไฟล์ หน้าเว็บจะไม่ส่ง health requests บน `*.github.io` และจะแจ้งว่าไม่มี Backend; ตัวช่วย Defender และ Wi-Fi ยังทำงานในเครื่องได้ โดยลิงก์ดาวน์โหลดเป็น relative URL เพื่อรองรับ project site เช่น `/S/`. เมื่อใช้ Backend ให้เปิดหน้าเว็บจาก origin เดียวกับ API (เช่น `http://localhost:8000` หรือ URL จาก Tailscale Serve) หน้าเว็บจะใช้ API ที่ origin นั้นโดยอัตโนมัติ หลีกเลี่ยงการตั้ง API แยก origin บนหน้า public เพราะต้องเปิด CORS และอาจเผย endpoint ส่วนตัว
+GitHub Pages ให้บริการเฉพาะไฟล์ static; ค่าเริ่มต้นของ `scanner-api-base` ว่าง หน้าเว็บจึงไม่ส่ง health request และแจ้งว่าไม่มี Backend ส่วนตัวช่วย Defender/Wi-Fi ทำงานบนเครื่องได้ และลิงก์ดาวน์โหลดเป็น relative URL เพื่อรองรับ project site เช่น `/S/`. เมื่อ deploy API ส่วนตัวแล้ว สามารถตั้งค่าเป็น HTTPS origin จาก Tailscale Serve ตาม [คู่มือ deploy](./DEPLOY-PRIVATE-VPS.md); browser จะเรียก API ข้าม origin และ CORS อนุญาตเฉพาะ origin ที่กำหนดไว้ CORS ไม่ใช่ authorization และห้ามเปิด API ผ่าน Tailscale Funnel หรือ public reverse proxy
 
 ดูขั้นตอนติดตั้ง backend บน VPS และเชื่อม GitHub Pages ผ่าน Tailscale HTTPS ใน [DEPLOY-PRIVATE-VPS.md](./DEPLOY-PRIVATE-VPS.md). CORS allowlist ตั้งผ่าน `CORS_ORIGINS`; ค่าเริ่มต้นอนุญาตเฉพาะ `https://funnythirat.github.io` แต่ CORS ไม่ใช่ authentication และ API ต้องคงอยู่หลัง Tailscale Serve โดยไม่เปิด Tailscale Funnel
 

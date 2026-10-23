@@ -414,8 +414,8 @@
       <section class="view" id="view-website">
         <div class="card">
           <h2>ตรวจการตั้งค่าเว็บไซต์</h2>
-          <p class="sub">ส่ง HTTP HEAD request เพียงครั้งเดียว เพื่อตรวจ security headers ที่ browser อ่านได้ ไม่มีการ crawl หรือทดสอบช่องโหว่เชิงโจมตี</p>
-          <div class="callout">ต้องได้รับอนุญาตจากเจ้าของระบบก่อนใช้งาน Browser อาจปฏิเสธการอ่านผลจากเว็บไซต์ที่ไม่เปิด CORS และไม่สามารถตรวจคะแนน/รายละเอียดใบรับรอง TLS ได้</div>
+          <p class="sub">ส่ง HTTP HEAD request เพียงครั้งเดียวจาก browser เพื่อตรวจ security headers ที่อ่านได้ ไม่มีการ crawl หรือทดสอบช่องโหว่เชิงโจมตี</p>
+          <div class="callout">ใช้ได้เฉพาะเว็บไซต์ที่คุณเป็นเจ้าของหรือได้รับอนุญาต Browser อาจปฏิเสธการอ่านผลหากเว็บไซต์ไม่เปิด CORS; GitHub Pages ไม่สามารถข้ามข้อจำกัดนี้ได้ และไม่สามารถตรวจ chain/วันหมดอายุ TLS</div>
           <form id="websiteForm" class="form-grid">
             <label for="websiteUrl">URL ของเว็บไซต์ (แนะนำ HTTPS)
               <input type="url" id="websiteUrl" placeholder="https://example.com" autocomplete="url" required>
@@ -552,7 +552,7 @@
           <div id="wifiResults" class="results" aria-live="polite"><div class="empty">เลือกและวิเคราะห์รายงานจากตัวช่วย Windows เพื่อดูผล</div></div>
         </div>
       </section>
-      <p class="footer-note">เครื่องมือนี้ช่วยคัดกรองเบื้องต้น ไม่รับประกันว่าจะพบช่องโหว่ทั้งหมด และผล "ไม่พบ" ไม่ได้ยืนยันว่าระบบปลอดภัย ควรใช้เครื่องมือและผู้เชี่ยวชาญเพิ่มเติมก่อนใช้งานจริง การใช้งานหน้านี้ส่งข้อมูลการเข้าชมพื้นฐานไปยัง Firebase Analytics; ไม่ส่งไฟล์ที่เลือกตรวจ</p>
+      <p class="footer-note">เครื่องมือนี้ช่วยคัดกรองเบื้องต้น ไม่รับประกันว่าจะพบช่องโหว่ทั้งหมด และผล "ไม่พบ" ไม่ได้ยืนยันว่าระบบปลอดภัย ควรใช้เครื่องมือและผู้เชี่ยวชาญเพิ่มเติมก่อนใช้งานจริง โค้ดและรายงานที่เลือกวิเคราะห์จะประมวลผลใน browser; ไฟล์ไวรัสจะอัปโหลดก็ต่อเมื่อสั่งสแกนผ่าน Backend ที่ตั้งค่าไว้ ส่วนชื่อและเวอร์ชัน dependency จะส่งไปยัง OSV เมื่อกดยินยอม</p>
     </main>
   </div>
 
@@ -1523,7 +1523,6 @@
   </script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-    import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -1532,8 +1531,7 @@
       projectId: "deea-9ed32",
       storageBucket: "deea-9ed32.firebasestorage.app",
       messagingSenderId: "649361533233",
-      appId: "1:649361533233:web:a2f979984a76f67f222810",
-      measurementId: "G-5V2FS5TZDY"
+      appId: "1:649361533233:web:a2f979984a76f67f222810"
     };
 
     const appShell = document.getElementById("appShell");
@@ -1562,16 +1560,6 @@
           window.alert("ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
         }
       });
-
-      try {
-        if (await isSupported()) {
-          getAnalytics(app);
-        } else {
-          console.warn("Firebase Analytics is not supported in this browser.");
-        }
-      } catch (error) {
-        console.error("Firebase Analytics could not be initialized.", error);
-      }
     } catch (error) {
       console.error("Firebase could not be initialized.", error);
       location.replace("login.html");
