@@ -316,7 +316,7 @@
           <div class="card">
             <h2>ข้อจำกัดที่ควรรู้</h2>
             <p class="sub">การตรวจ headers และ source code ทำใน browser; สแกนไฟล์ไวรัสต้องเปิด FastAPI/Celery/Redis/ClamAV ผ่าน Docker Compose เว็บนี้ไม่สามารถเข้าถึงไฟล์ทั้งหมดหรือแอปที่ติดตั้งในเครื่องได้</p>
-            <div class="callout info">การตรวจเว็บไซต์ใช้คำขอ HEAD หนึ่งครั้งเท่านั้น และอาจอ่าน headers ไม่ได้หากเว็บไม่เปิด CORS ส่วนรายละเอียดใบรับรอง TLS ต้องตรวจจาก backend</div>
+            <div class="callout info">การตรวจเว็บไซต์ใช้คำขอ HEAD หนึ่งครั้งเท่านั้น เมื่อเชื่อมต่อ Backend จะส่งคำขอจาก Backend; ถ้าไม่มี Backend browser อาจอ่าน headers ไม่ได้หากเว็บไม่เปิด CORS ส่วนรายละเอียดใบรับรอง TLS ยังไม่ได้ตรวจ</div>
             <div class="callout">ข้อมูล dependency (ชื่อและเวอร์ชันเท่านั้น) ส่งไปยัง OSV; source code วิเคราะห์ใน browser แต่ไฟล์สแกนไวรัสจะถูกอัปโหลดไปยัง backend เพื่อกักไว้ชั่วคราว</div>
           </div>
         </div>
@@ -400,7 +400,7 @@
           <h2>Scanning Engines และการเชื่อมต่อ</h2>
           <p class="sub">สถานะตามความสามารถที่มีจริงในไฟล์ต้นแบบ ไม่มีการจำลองสถานะ backend ว่าเชื่อมต่อแล้ว</p>
           <div class="engine-grid">
-            <div class="engine-card"><div><h3>HTTP Headers</h3><p>คำขอ HEAD จาก browser หนึ่งครั้ง ตรวจ security headers ที่ CORS อนุญาตให้อ่าน</p></div><span class="state-label ready">พร้อม</span></div>
+            <div class="engine-card"><div><h3>HTTP Headers</h3><p>คำขอ HEAD หนึ่งครั้งผ่าน Backend (หรือจาก browser ซึ่งจำกัดด้วย CORS เมื่อไม่มี Backend)</p></div><span class="state-label ready">พร้อม</span></div>
             <div class="engine-card"><div><h3>TLS Certificate</h3><p>browser ตรวจ TLS ขณะเชื่อมต่อ แต่หน้าเว็บนี้อ่าน chain และวันหมดอายุไม่ได้ ต้องเพิ่ม backend checker</p></div><span class="state-label disabled">ต้องมี Backend</span></div>
             <div class="engine-card"><div><h3>Source Code</h3><p>กฎตรวจพื้นฐานทำงานใน browser; ไม่ execute และไม่อัปโหลด source</p></div><span class="state-label ready">พร้อม</span></div>
             <div class="engine-card"><div><h3>Dependency / OSV</h3><p>ส่งชื่อแพ็กเกจและเวอร์ชันที่แน่นอนไปยัง OSV API</p></div><span class="state-label ready">พร้อม</span></div>
@@ -415,7 +415,7 @@
         <div class="card">
           <h2>ตรวจการตั้งค่าเว็บไซต์</h2>
           <p class="sub">ส่ง HTTP HEAD request เพียงครั้งเดียวจาก browser เพื่อตรวจ security headers ที่อ่านได้ ไม่มีการ crawl หรือทดสอบช่องโหว่เชิงโจมตี</p>
-          <div class="callout">ใช้ได้เฉพาะเว็บไซต์ที่คุณเป็นเจ้าของหรือได้รับอนุญาต Browser อาจปฏิเสธการอ่านผลหากเว็บไซต์ไม่เปิด CORS; GitHub Pages ไม่สามารถข้ามข้อจำกัดนี้ได้ และไม่สามารถตรวจ chain/วันหมดอายุ TLS</div>
+          <div class="callout">ใช้ได้เฉพาะเว็บไซต์ที่คุณเป็นเจ้าของหรือได้รับอนุญาต เมื่อเชื่อมต่อ Backend จะตรวจผ่าน Backend ซึ่งไม่ติด CORS; หากเปิดจาก GitHub Pages โดยไม่มี Backend browser อาจปฏิเสธการอ่านผลหากเว็บไซต์ไม่เปิด CORS และยังไม่ตรวจ chain/วันหมดอายุ TLS</div>
           <form id="websiteForm" class="form-grid">
             <label for="websiteUrl">URL ของเว็บไซต์ (แนะนำ HTTPS)
               <input type="url" id="websiteUrl" placeholder="https://example.com" autocomplete="url" required>
