@@ -58,6 +58,16 @@ def dispatch_pending_scans() -> int:
     return dispatched
 
 
+def _mark_scan_failed(scan_id: str, error_code: str) -> None:
+    with SessionLocal() as db:
+        scan = db.get(VirusScan, scan_id, with_for_update=True)
+        if scan is not None and scan.status not in {"completed", "failed"}:
+            scan.status = "failed"
+            scan.error_code = error_code
+            scan.completed_at = datetime.now(timezone.utc)
+            db.commit()
+
+
 @celery_app.task(name="virus_scanner.scan_file", bind=True, max_retries=2)
 def scan_virus_file(self, scan_id: str) -> None:
     redelivered = bool((self.request.delivery_info or {}).get("redelivered"))
@@ -78,6 +88,7 @@ def scan_virus_file(self, scan_id: str) -> None:
             logger.info("Ignoring duplicate scan task %s with status %s", scan_id, scan.status)
             return
         scan.status = "running"
+        scan.started_at = datetime.now(timezone.utc)
         db.commit()
         path = Path(scan.file_path)
         mode = scan.mode
@@ -86,9 +97,12 @@ def scan_virus_file(self, scan_id: str) -> None:
     try:
         result = scan_file(path, mode)
         with SessionLocal() as db:
-            scan = db.get(VirusScan, scan_id)
+            scan = db.get(VirusScan, scan_id, with_for_update=True)
             if scan is None:
                 logger.error("Scan record %s disappeared before result save", scan_id)
+                return
+            if scan.status != "running":
+                logger.warning("Discarding result for scan %s with status %s", scan_id, scan.status)
                 return
             scan.result = result
             scan.status = "completed"
@@ -107,22 +121,10 @@ def scan_virus_file(self, scan_id: str) -> None:
             )
             raise self.retry(exc=error, countdown=countdown)
         logger.exception("Virus scan task exhausted retries for %s", scan_id)
-        with SessionLocal() as db:
-            scan = db.get(VirusScan, scan_id)
-            if scan is not None:
-                scan.status = "failed"
-                scan.error_code = "scanner_failed"
-                scan.completed_at = datetime.now(timezone.utc)
-                db.commit()
+        _mark_scan_failed(scan_id, "scanner_failed")
     except Exception:
         logger.exception("Virus scan task failed for %s", scan_id)
-        with SessionLocal() as db:
-            scan = db.get(VirusScan, scan_id)
-            if scan is not None:
-                scan.status = "failed"
-                scan.error_code = "scanner_failed"
-                scan.completed_at = datetime.now(timezone.utc)
-                db.commit()
+        _mark_scan_failed(scan_id, "scanner_failed")
     finally:
         if cleanup_file:
             try:
@@ -141,29 +143,38 @@ def reap_stale_scans() -> int:
     now = datetime.now(timezone.utc)
     running_cutoff = datetime.fromtimestamp(now.timestamp() - STALE_RUNNING_SECONDS, timezone.utc)
     queued_cutoff = datetime.fromtimestamp(now.timestamp() - STALE_QUEUED_SECONDS, timezone.utc)
-    reaped = 0
     with SessionLocal() as db:
         stale = db.scalars(
             select(VirusScan)
             .where(
                 or_(
-                    and_(VirusScan.status == "running", VirusScan.created_at <= running_cutoff),
+                    and_(VirusScan.status == "running", VirusScan.started_at <= running_cutoff),
+                    and_(
+                        VirusScan.status == "running",
+                        VirusScan.started_at.is_(None),
+                        VirusScan.created_at <= running_cutoff,
+                    ),
                     and_(VirusScan.status == "queued", VirusScan.created_at <= queued_cutoff),
                 )
             )
             .limit(100)
             .with_for_update(skip_locked=True)
         ).all()
+        stale_paths = []
         for scan in stale:
             scan.status = "failed"
             scan.error_code = "scan_timeout"
             scan.completed_at = now
-            try:
-                Path(scan.file_path).unlink(missing_ok=True)
-            except OSError:
-                logger.exception("Could not remove quarantined upload for stale scan %s", scan.id)
-            reaped += 1
+            stale_paths.append((scan.id, Path(scan.file_path)))
         db.commit()
+
+        # Files are removed only after the failed status is committed, so a rolled-back
+        # update never leaves a queued/running scan without its upload.
+        for scan_id, path in stale_paths:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                logger.exception("Could not remove quarantined upload for stale scan %s", scan_id)
 
         if QUARANTINE_DIR.is_dir():
             active_ids = set(
@@ -183,6 +194,6 @@ def reap_stale_scans() -> int:
                         logger.warning("Removed orphaned quarantine file %s", path.name)
                 except OSError:
                     logger.exception("Could not remove orphaned quarantine file %s", path.name)
-    if reaped:
-        logger.warning("Marked %s stale scans as failed", reaped)
-    return reaped
+    if stale_paths:
+        logger.warning("Marked %s stale scans as failed", len(stale_paths))
+    return len(stale_paths)

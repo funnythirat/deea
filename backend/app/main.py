@@ -24,7 +24,7 @@ from google.oauth2 import id_token
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from redis import Redis
 from redis.exceptions import RedisError
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from app.ai import summarize_findings
@@ -53,6 +53,10 @@ if not STATIC_INDEX.is_file():
     STATIC_INDEX = Path(__file__).resolve().parents[1] / "static" / "index.html"
 if not STATIC_LOGIN.is_file():
     STATIC_LOGIN = Path(__file__).resolve().parents[1] / "static" / "login.html"
+STATIC_ASSETS = Path(__file__).resolve().parents[2] / "assets"
+if not STATIC_ASSETS.is_dir():
+    STATIC_ASSETS = Path(__file__).resolve().parents[1] / "static" / "assets"
+STATIC_ASSET_TYPES = {".js": "text/javascript", ".css": "text/css"}
 if not WIFI_HELPER.is_file():
     WIFI_HELPER = Path(__file__).resolve().parents[1] / "wifi-scan.ps1"
 if not VIRUS_HELPER.is_file():
@@ -78,8 +82,8 @@ FIREBASE_AUTH_DOMAIN = f"https://{FIREBASE_PROJECT_ID}.firebaseapp.com" if FIREB
 CONTENT_SECURITY_POLICY = "; ".join(
     [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://www.gstatic.com",
-        "style-src 'self' 'unsafe-inline'",
+        "script-src 'self' https://www.gstatic.com",
+        "style-src 'self'",
         "img-src 'self' data:",
         "connect-src 'self' https://identitytoolkit.googleapis.com "
         "https://securetoken.googleapis.com https://api.osv.dev",
@@ -90,6 +94,20 @@ CONTENT_SECURITY_POLICY = "; ".join(
         "frame-ancestors 'none'",
     ]
 )
+# Swagger UI loads its bundle from jsdelivr and boots with an inline script.
+DOCS_CONTENT_SECURITY_POLICY = "; ".join(
+    [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+        "style-src 'self' https://cdn.jsdelivr.net",
+        "img-src 'self' data: https://fastapi.tiangolo.com",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'",
+    ]
+)
+DOCS_PATH_PREFIX = "/api/docs"
 SECURITY_HEADERS = [
     (b"x-content-type-options", b"nosniff"),
     (b"x-frame-options", b"DENY"),
@@ -119,7 +137,12 @@ class SecurityHeadersMiddleware:
                     (value for key, value in headers if key.lower() == b"content-type"), b""
                 )
                 if content_type.startswith(b"text/html") and b"content-security-policy" not in present:
-                    headers.append((b"content-security-policy", CONTENT_SECURITY_POLICY.encode("ascii")))
+                    policy = (
+                        DOCS_CONTENT_SECURITY_POLICY
+                        if scope["path"].startswith(DOCS_PATH_PREFIX)
+                        else CONTENT_SECURITY_POLICY
+                    )
+                    headers.append((b"content-security-policy", policy.encode("ascii")))
                 message = {**message, "headers": headers}
             await send(message)
 
@@ -484,10 +507,24 @@ def _head_public_url(target) -> tuple[int, dict[str, str]]:
             raw_socket.close()
 
 
+def ensure_virus_scan_columns(bind=None) -> None:
+    bind = bind or engine
+    columns = {column["name"] for column in inspect(bind).get_columns(VirusScan.__tablename__)}
+    if "started_at" in columns:
+        return
+    column_type = VirusScan.__table__.c.started_at.type.compile(dialect=bind.dialect)
+    with bind.begin() as connection:
+        connection.execute(
+            text(f"ALTER TABLE {VirusScan.__tablename__} ADD COLUMN started_at {column_type}")
+        )
+    logger.info("Added virus_scans.started_at column")
+
+
 def initialize_database() -> None:
     QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
     os.chmod(QUARANTINE_DIR, 0o700)
     Base.metadata.create_all(bind=engine)
+    ensure_virus_scan_columns()
     cutoff = datetime.now(timezone.utc).timestamp() - 24 * 60 * 60
     for path in QUARANTINE_DIR.iterdir():
         if path.is_file() and path.stat().st_mtime < cutoff:
@@ -510,6 +547,15 @@ def login():
     if not STATIC_LOGIN.is_file():
         raise HTTPException(status_code=404, detail="Login page is not installed")
     return FileResponse(STATIC_LOGIN)
+
+
+@app.get("/assets/{name}", include_in_schema=False)
+def static_asset(name: str):
+    media_type = STATIC_ASSET_TYPES.get(Path(name).suffix)
+    path = STATIC_ASSETS / name
+    if media_type is None or Path(name).name != name or not path.is_file():
+        raise HTTPException(status_code=404, detail="Not found")
+    return FileResponse(path, media_type=media_type, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/wifi-scan.ps1", include_in_schema=False)
@@ -545,7 +591,6 @@ REPORTED_WEBSITE_HEADERS = tuple(name.lower() for name, _, _ in WEBSITE_SECURITY
     "x-frame-options",
     "server",
     "content-type",
-    "location",
 )
 
 
