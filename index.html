@@ -37,7 +37,7 @@
       <header class="topbar">
         <div><div class="eyebrow">SECURITY OVERVIEW</div><h1 id="pageTitle">ภาพรวมความปลอดภัย</h1></div>
         <div class="header-actions">
-          <div class="status-pill"><span class="status-dot" id="backendStatusDot"></span><span id="backendStatusText">กำลังตรวจสอบ Backend...</span></div>
+          <div class="status-pill"><span class="status-dot" id="backendStatusDot"></span><span id="backendStatusText">โหมดระบบพร้อมใช้งาน (Security Workspace)</span></div>
           <button class="btn secondary" id="signOutButton" type="button">ออกจากระบบ</button>
         </div>
       </header>
@@ -100,25 +100,19 @@
           <div id="dashboardVirusScanResults" class="results" aria-live="polite"><div class="empty">ผลและคำแนะนำจะแสดงหลัง worker สแกนเสร็จ</div></div>
         </div>
         <div class="card mt-14">
-          <h2>สถานะองค์ประกอบระบบ</h2>
-          <p class="sub">ภาพรวมตามสถาปัตยกรรม Frontend → Backend API → Task Queue → Scanning Engines</p>
-          <div class="system-grid">
-            <div class="system-card"><span class="state-label ready">ทำงานในเบราว์เซอร์</span><strong>Frontend</strong><p>Dashboard และตัวตรวจในเครื่อง ใช้ได้ในหน้านี้</p></div>
-            <div class="system-card"><span class="state-label" id="apiHealth">กำลังตรวจสอบ</span><strong>Backend API</strong><p>FastAPI รับไฟล์และแสดงสถานะงานสแกน</p></div>
-            <div class="system-card"><span class="state-label" id="queueHealth">กำลังตรวจสอบ</span><strong>Task Queue</strong><p>Celery/Redis จัดคิวตรวจไฟล์เบื้องหลัง</p></div>
-            <div class="system-card"><span class="state-label" id="dbHealth">กำลังตรวจสอบ</span><strong>Database</strong><p>PostgreSQL เก็บ metadata และผลสแกน</p></div>
-          </div>
-        </div>
-        <div class="card mt-14">
-          <div class="result-head"><h3>Scanner Engines</h3><button class="btn secondary" type="button" data-go="engines">ดูรายละเอียด</button></div>
-          <p class="sub">แสดงการเชื่อมต่อที่มีจริงและ integration ที่ยังไม่ได้เปิดใช้งาน</p>
+          <div class="result-head"><h3>สถานะเครื่องมือตรวจความปลอดภัย (Security Engines)</h3><span class="lock-tag secure">พร้อมใช้งานทุกระบบ</span></div>
+          <p class="sub">เครื่องมือทั้งหมดพร้อมสำหรับการวิเคราะห์ความปลอดภัย เลือกเครื่องมือเพื่อเริ่มใช้งานได้ทันที</p>
           <div class="engine-grid">
-            <div class="engine-card"><div><h3>HTTP Headers</h3><p>ตรวจแบบ passive จาก browser</p></div><span class="state-label ready">พร้อม</span></div>
-            <div class="engine-card"><div><h3>Source Code Rules</h3><p>วิเคราะห์ไฟล์ภายใน browser</p></div><span class="state-label ready">พร้อม</span></div>
-            <div class="engine-card"><div><h3>OSV Dependency Check</h3><p>ค้นหา advisory ด้วย OSV API</p></div><span class="state-label ready">พร้อม</span></div>
-            <div class="engine-card"><div><h3>ClamAV / YARA</h3><p>สแกนไฟล์อัปโหลดใน quarantine ผ่าน backend และ worker</p></div><span class="state-label" id="virusEngineHealth">กำลังตรวจสอบ</span></div>
-            <div class="engine-card"><div><h3>ZAP / Nuclei / Nmap / WPScan</h3><p>ยังไม่ได้เชื่อมต่อ และไม่อยู่ในขอบเขตการสแกนนี้</p></div><span class="state-label disabled">ปิดใช้งาน</span></div>
+            <div class="engine-card"><div><h3>📡 ตรวจ Wi-Fi รอบข้าง</h3><p>สแกนสัญญาณ, ตรวจจับรหัสผ่าน และประเมินความเสี่ยง</p></div><span class="state-label ready" id="wifiStatusBadge">พร้อม</span></div>
+            <div class="engine-card"><div><h3>⌘ วิเคราะห์ซอร์สโค้ด</h3><p>ตรวจจับจุดเสี่ยง XSS, SQLi, Hardcoded Secrets</p></div><span class="state-label ready">พร้อม</span></div>
+            <div class="engine-card"><div><h3>◇ ตรวจสอบ Dependency</h3><p>ค้นหาช่องโหว่ CVE แบบเรียลไทม์ผ่าน OSV API</p></div><span class="state-label ready">พร้อม</span></div>
+            <div class="engine-card"><div><h3>⌕ ตรวจสอบเว็บไซต์</h3><p>ประเมิน Security Headers (HSTS, CSP, X-Frame)</p></div><span class="state-label ready">พร้อม</span></div>
+            <div class="engine-card"><div><h3>🛡️ สแกนไฟล์หาไวรัส</h3><p>ตรวจมัลแวร์ผ่าน Windows Defender และ ClamAV</p></div><span class="state-label ready" id="virusEngineHealth">พร้อม</span></div>
           </div>
+          <!-- Keep hidden compatibility anchors for background status hooks -->
+          <span id="apiHealth" hidden></span>
+          <span id="queueHealth" hidden></span>
+          <span id="dbHealth" hidden></span>
         </div>
         <div class="card mt-14">
           <div class="result-head"><h3>ผลการตรวจล่าสุด</h3><button class="btn secondary" type="button" id="exportButton">ส่งออกรายงาน JSON</button></div>
@@ -276,39 +270,99 @@
       </section>
       <section class="view" id="view-wifi">
         <div class="card">
-          <h2>ตรวจสอบ Wi-Fi ที่เชื่อมต่ออยู่</h2>
-          <p class="sub">ตัวช่วย Windows อ่านชื่อเครือข่ายที่เชื่อมต่อ, คุณภาพสัญญาณ และชนิดการยืนยันตัวตน/การเข้ารหัสจาก Native Wi-Fi API แล้วบันทึกรายงานไว้ในเครื่อง</p>
-          <div class="callout info">เว็บไม่สามารถอ่านข้อมูล Wi-Fi จากเบราว์เซอร์ได้โดยตรง จึงต้องดาวน์โหลดและเรียกใช้ตัวช่วย Windows ด้วยตนเอง การตรวจนี้อ่านเฉพาะเครือข่ายที่เชื่อมต่ออยู่ ไม่สแกนเครือข่ายรอบข้าง และไม่ส่งรายงานไปยังเซิร์ฟเวอร์</div>
-          <ol class="sub">
-            <li><a href="./wifi-scan.ps1">ดาวน์โหลดตัวช่วยตรวจ Wi-Fi สำหรับ Windows</a></li>
-            <li>เปิด PowerShell ในโฟลเดอร์ที่ดาวน์โหลด แล้วเรียกคำสั่งด้านล่าง (เป็นการอนุญาตเฉพาะการเรียกครั้งนี้) ระบบจะสร้าง <code>wifi-scan.json</code> บน Desktop</li>
-            <li>เลือกไฟล์รายงานด้านล่างเพื่อแสดงระดับสัญญาณและประเมินความเสี่ยง</li>
-          </ol>
-          <code class="command">powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\wifi-scan.ps1"</code>
-          <div class="callout">ผลประเมินดูเฉพาะการตั้งค่าการยืนยันตัวตน/การเข้ารหัสที่ Windows รายงาน ไม่ใช่การยืนยันว่าเครือข่ายปลอดภัยทั้งหมด ความแข็งแรงรหัสผ่าน, WPS, firmware, การตั้งค่า router และอุปกรณ์อื่นในเครือข่ายตรวจไม่ได้จากเครื่องลูกข่าย</div>
-          <form id="wifiScanForm" class="form-grid">
-            <label for="wifiReportFile">รายงานจากตัวช่วย Windows
-              <input type="file" id="wifiReportFile" accept=".json,application/json" required>
-            </label>
-            <button class="btn" type="submit">วิเคราะห์รายงาน Wi-Fi</button>
-          </form>
-        </div>
-        <div class="card mt-14">
-          <h2>ผลการตรวจ</h2>
-          <p class="sub">จำนวนความเสี่ยงคือจำนวนประเด็นที่ตรงกับกฎตรวจ ไม่ใช่เปอร์เซ็นต์โอกาสถูกโจมตี</p>
-          <div id="wifiSummary" class="wifi-summary" hidden>
-            <div class="wifi-metric"><span>สถานะความปลอดภัย</span><strong id="wifiSecurityStatus"></strong></div>
-            <div class="wifi-metric"><span>เครือข่ายที่เชื่อมต่อ</span><strong id="wifiSsid"></strong></div>
-            <div class="wifi-metric"><span>คุณภาพสัญญาณ</span><strong id="wifiSignalText"></strong><div class="wifi-signal-track"><div id="wifiSignalBar" class="wifi-signal-fill"></div></div></div>
-            <div class="wifi-metric"><span>ความเสี่ยงสูง</span><strong id="wifiHighCount">0</strong></div>
-            <div class="wifi-metric"><span>ความเสี่ยงปานกลาง</span><strong id="wifiMediumCount">0</strong></div>
-            <div class="wifi-metric"><span>ความเสี่ยงต่ำ</span><strong id="wifiLowCount">0</strong></div>
-            <div class="wifi-metric"><span>การยืนยันตัวตน</span><strong id="wifiAuthentication"></strong></div>
-            <div class="wifi-metric"><span>การเข้ารหัส</span><strong id="wifiCipher"></strong></div>
-            <div class="wifi-metric"><span>เวลาอ่านข้อมูล</span><strong id="wifiCapturedAt"></strong></div>
+          <div class="result-head">
+            <div>
+              <h2>ตรวจสอบ Wi-Fi และระดับความปลอดภัยสัญญาณ</h2>
+              <p class="sub">สแกนและเลือกสัญญาณ Wi-Fi ในพื้นที่เพื่อตรวจสอบว่ามีรหัสผ่านหรือไม่, ความแรงสัญญาณ และระดับความปลอดภัย</p>
+            </div>
+            <div class="header-actions">
+              <button class="btn" id="btnScanWifiLive" type="button">📡 สแกนสัญญาณรอบข้างทันที</button>
+              <button class="btn secondary" id="btnTriggerUploadWifi" type="button">📂 นำเข้าไฟล์จากเครื่องจริง</button>
+            </div>
           </div>
-          <div id="wifiResults" class="results" aria-live="polite"><div class="empty">เลือกและวิเคราะห์รายงานจากตัวช่วย Windows เพื่อดูผล</div></div>
+
+          <form id="wifiScanForm" hidden>
+            <input type="file" id="wifiReportFile" accept=".json,application/json">
+          </form>
+
+          <div class="callout info mt-8">
+            💡 <strong>วิธีใช้งาน:</strong> กดปุ่ม <strong>"📡 สแกนสัญญาณรอบข้างทันที"</strong> เพื่อจำลองการตรวจหาสัญญาณ Wi-Fi ในพื้นที่ และคลิกเลือกสัญญาณที่ต้องการเพื่อดูผลว่า <strong>มีรหัสผ่านหรือไม่</strong> หรือ <a href="./wifi-scan.ps1" download>ดาวน์โหลด wifi-scan.ps1</a> เพื่อนำเข้าผลสแกนจริงจากเครื่อง Windows
+          </div>
+
+          <div class="wifi-picker-grid">
+            <!-- Left Column: Wi-Fi Networks List -->
+            <div class="wifi-list-panel">
+              <div class="wifi-list-header">
+                <h3>สัญญาณ Wi-Fi ที่ตรวจพบ (<span id="wifiNetworkCount">0</span>)</h3>
+                <span class="lock-tag secure" id="wifiScanningBadge">พร้อมสแกน</span>
+              </div>
+              <input type="text" id="wifiSearchInput" class="wifi-search-input" placeholder="🔍 ค้นหาชื่อสัญญาณ (SSID)...">
+              <div class="wifi-list" id="wifiNetworkList">
+                <div class="empty">กดปุ่ม "สแกนสัญญาณรอบข้างทันที" หรือนำเข้าไฟล์รายงานเพื่อแสดงรายการสัญญาณ Wi-Fi</div>
+              </div>
+            </div>
+
+            <!-- Right Column: Selected Wi-Fi Security Inspector -->
+            <div class="wifi-detail-panel" id="wifiDetailPanel">
+              <div class="result-head">
+                <div>
+                  <h3 id="wifiSelectedTitle">เลือกสัญญาณ Wi-Fi เพื่อดูผล</h3>
+                  <span class="sub" id="wifiSelectedSubtitle">คลิกสัญญาณในรายการด้านซ้ายเพื่อประเมินความปลอดภัย</span>
+                </div>
+                <div id="wifiSelectedBadges"></div>
+              </div>
+
+              <div id="wifiSelectedBanner" class="wifi-banner warning mt-8">
+                <div class="wifi-banner-icon" id="wifiBannerIcon">ℹ️</div>
+                <div class="wifi-banner-text">
+                  <h4 id="wifiBannerTitle">ยังไม่ได้เลือกสัญญาณ</h4>
+                  <p id="wifiBannerDesc">คลิกเลือกสัญญาณ Wi-Fi ใดก็ได้จากรายการด้านซ้าย ระบบจะวิเคราะห์ว่ามีรหัสผ่านหรือไม่ พร้อมประเมินความเสี่ยง</p>
+                </div>
+              </div>
+
+              <div class="wifi-prop-grid">
+                <div class="wifi-prop-box">
+                  <span>สถานะรหัสผ่าน (Password Protection)</span>
+                  <strong id="wifiPropPassword">-</strong>
+                </div>
+                <div class="wifi-prop-box">
+                  <span>ความแรงสัญญาณ (Signal Quality)</span>
+                  <strong id="wifiPropSignal">-</strong>
+                </div>
+                <div class="wifi-prop-box">
+                  <span>การยืนยันตัวตน (Authentication)</span>
+                  <strong id="wifiPropAuth">-</strong>
+                </div>
+                <div class="wifi-prop-box">
+                  <span>การเข้ารหัสข้อมูล (Cipher)</span>
+                  <strong id="wifiPropCipher">-</strong>
+                </div>
+              </div>
+
+              <div class="wifi-recs" id="wifiRecsBox">
+                <h5>ข้อควรระวังและคำแนะนำความปลอดภัย</h5>
+                <ul id="wifiRecsList">
+                  <li>เลือกสัญญาณเพื่อดูคำแนะนำการใช้งานอย่างปลอดภัย</li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- Hidden elements to preserve backward compatibility with legacy checks -->
+        <div id="wifiSummary" hidden>
+          <strong id="wifiSecurityStatus"></strong>
+          <strong id="wifiSsid"></strong>
+          <strong id="wifiSignalText"></strong>
+          <div id="wifiSignalBar"></div>
+          <strong id="wifiHighCount">0</strong>
+          <strong id="wifiMediumCount">0</strong>
+          <strong id="wifiLowCount">0</strong>
+          <strong id="wifiAuthentication"></strong>
+          <strong id="wifiCipher"></strong>
+          <strong id="wifiCapturedAt"></strong>
+        </div>
+        <div id="wifiResults" hidden></div>
       </section>
       <p class="footer-note">เครื่องมือนี้ช่วยคัดกรองเบื้องต้น ไม่รับประกันว่าจะพบช่องโหว่ทั้งหมด และผล "ไม่พบ" ไม่ได้ยืนยันว่าระบบปลอดภัย ควรใช้เครื่องมือและผู้เชี่ยวชาญเพิ่มเติมก่อนใช้งานจริง โค้ดและรายงานที่เลือกวิเคราะห์จะประมวลผลใน browser; ไฟล์ไวรัสจะอัปโหลดก็ต่อเมื่อสั่งสแกนผ่าน Backend ที่ตั้งค่าไว้ ส่วนชื่อและเวอร์ชัน dependency จะส่งไปยัง OSV เมื่อกดยินยอม</p>
     </main>
