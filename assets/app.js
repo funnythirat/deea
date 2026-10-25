@@ -360,6 +360,70 @@ function renderWifiList(networks) {
   });
 }
 
+const btnScanHardware = document.getElementById("btnScanWifiHardware");
+if (btnScanHardware) {
+  btnScanHardware.addEventListener("click", async () => {
+    btnScanHardware.disabled = true;
+    btnScanHardware.textContent = "⚡ กำลังสแกนฮาร์ดแวร์จริงในเครื่อง...";
+    const badge = document.getElementById("wifiScanningBadge");
+    if (badge) {
+      badge.textContent = "กำลังอ่านข้อมูลการ์ด Wi-Fi...";
+      badge.className = "lock-tag warning";
+    }
+
+    try {
+      const endpoint = apiBase ? `${apiBase}/api/wifi/scan-live` : "/api/wifi/scan-live";
+      const res = await fetch(endpoint, { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error("เซิร์ฟเวอร์ตอบกลับสถานะ HTTP " + res.status);
+      }
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.availableNetworks)) {
+        throw new Error(data.message || "ไม่สามารถอ่านข้อมูล Wi-Fi จากเครื่องได้");
+      }
+
+      const networks = data.availableNetworks.map((n) => ({
+        ssid: n.ssid || "(ไม่ทราบชื่อ)",
+        signalQualityPercent: n.signal || 50,
+        authentication: n.authentication || "Unknown",
+        cipher: n.encryption || "Unknown",
+        hasPassword: n.hasPassword !== undefined ? n.hasPassword : true,
+        isConnected: Boolean(n.isConnected),
+        band: n.band || "",
+        channel: n.channel || "",
+        radioType: n.radioType || "",
+        capturedAtUtc: data.scanTime || new Date().toISOString()
+      }));
+
+      if (networks.length === 0) {
+        throw new Error("ไม่พบสัญญาณ Wi-Fi รอบตัวขณะนี้ หรือปิดการ์ด Wi-Fi อยู่");
+      }
+
+      renderWifiList(networks);
+      const conn = networks.find((n) => n.isConnected) || networks[0];
+      selectWifiNetwork(conn);
+
+      if (badge) {
+        badge.textContent = `พบ ${networks.length} เครือข่ายจริง`;
+        badge.className = "lock-tag secure";
+      }
+      window.alert(`✅ สแกนสำเร็จ! ตรวจพบสัญญาณ Wi-Fi จริงรอบตัวทั้งหมด ${networks.length} เครือข่าย\n(เชื่อมต่ออยู่กับ: ${data.connected ? data.connected.ssid : 'ไม่ได้เชื่อมต่อ'})`);
+    } catch (err) {
+      if (badge) {
+        badge.textContent = "สแกนไม่สำเร็จ";
+        badge.className = "lock-tag danger";
+      }
+      const msg = !apiBase && location.hostname.includes("github.io")
+        ? `⚠️ ขณะนี้คุณกำลังเปิดเว็บผ่าน GitHub Pages (ระบบจำกัดสิทธิ์เบราว์เซอร์ไม่ให้แอบสแกนฮาร์ดแวร์)\n\n📌 แนะนำ:\n1. ดับเบิลคลิกไฟล์ "รันแอปพลิเคชัน.bat" ในโฟลเดอร์โครงการ เพื่อเปิดโหมด Desktop App สแกนเครื่องจริงได้ 100%\n2. หรือคลิกปุ่ม "📡 จำลองสัญญาณ (Demo)" เพื่อทดลองใช้งาน`
+        : `ไม่สามารถสแกน Wi-Fi จริงจากเครื่องได้: ${err.message}\n(ตรวจสอบว่าเครื่องมีตัวรับสัญญาณ Wi-Fi และเปิด Wi-Fi อยู่ หรือดับเบิลคลิกไฟล์ รันแอปพลิเคชัน.bat)`;
+      window.alert(msg);
+    } finally {
+      btnScanHardware.disabled = false;
+      btnScanHardware.textContent = "⚡ สแกน Wi-Fi จริงจากเครื่องนี้";
+    }
+  });
+}
+
 const btnScanLive = document.getElementById("btnScanWifiLive");
 if (btnScanLive) {
   btnScanLive.addEventListener("click", () => {
@@ -373,9 +437,9 @@ if (btnScanLive) {
 
     setTimeout(() => {
       btnScanLive.disabled = false;
-      btnScanLive.textContent = "📡 สแกนสัญญาณรอบข้างทันที";
+      btnScanLive.textContent = "📡 จำลองสัญญาณ (Demo)";
       if (badge) {
-        badge.textContent = "สแกนสำเร็จ";
+        badge.textContent = "จำลองสำเร็จ";
         badge.className = "lock-tag secure";
       }
       renderWifiList(SAMPLE_WIFI_NETWORKS);
@@ -383,6 +447,7 @@ if (btnScanLive) {
     }, 500);
   });
 }
+
 
 const searchInput = document.getElementById("wifiSearchInput");
 if (searchInput) {

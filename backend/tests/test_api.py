@@ -729,6 +729,15 @@ class VirusScanApiTests(unittest.TestCase):
         self.assertEqual(missing_length_status, 411)
         self.assertEqual(large_length_status, 413)
 
+    def test_wifi_scan_live_endpoint(self):
+        response = self.client.get("/api/wifi/scan-live")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("success", data)
+        self.assertIn("availableNetworks", data)
+        self.assertIsInstance(data["availableNetworks"], list)
+
 
 if __name__ == "__main__":
     unittest.main()
+

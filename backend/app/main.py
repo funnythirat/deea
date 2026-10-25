@@ -678,6 +678,15 @@ def receive_wifi_report(
     }
 
 
+@app.get("/api/wifi/scan-live")
+@app.get("/api/v1/wifi/scan-live")
+def wifi_scan_live() -> dict:
+    from app.wifi_service import scan_local_wifi
+
+    return scan_local_wifi()
+
+
+
 @app.get("/api/v1/health")
 def health(db: Session = Depends(get_db)) -> dict:
     services = {"database": False, "redis": False, "worker": False, "clamav": False, "yara": False}
