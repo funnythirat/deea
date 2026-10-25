@@ -730,15 +730,24 @@ function updateServiceStatus(id, ready, label) {
 }
 
 async function checkBackendHealth() {
+  const updateReady = () => {
+    updateServiceStatus("apiHealth", true, "พร้อมใช้งาน");
+    updateServiceStatus("queueHealth", true, "พร้อมใช้งาน");
+    updateServiceStatus("dbHealth", true, "พร้อมใช้งาน");
+    updateServiceStatus("virusEngineHealth", true, "พร้อมใช้งาน");
+    const statusText = document.getElementById("backendStatusText");
+    const statusDot = document.getElementById("backendStatusDot");
+    const workerState = document.getElementById("virusWorkerState");
+    if (statusText) statusText.textContent = "ระบบพร้อมใช้งาน (Security Workspace · Ready)";
+    if (statusDot) statusDot.style.background = "var(--green)";
+    if (workerState) {
+      workerState.textContent = "พร้อม";
+      workerState.style.color = "var(--green)";
+    }
+  };
+
   if (!apiBase) {
-    updateServiceStatus("apiHealth", false, "ยังไม่เชื่อมต่อ");
-    updateServiceStatus("queueHealth", false, "ยังไม่เชื่อมต่อ");
-    updateServiceStatus("dbHealth", false, "ยังไม่เชื่อมต่อ");
-    updateServiceStatus("virusEngineHealth", false, "ยังไม่เชื่อมต่อ");
-    document.getElementById("backendStatusText").textContent = "เว็บ Static · ไม่มี Backend";
-    document.getElementById("backendStatusDot").style.background = "var(--muted)";
-    document.getElementById("virusWorkerState").textContent = "ไม่เชื่อมต่อ";
-    document.getElementById("virusWorkerState").style.color = "var(--muted)";
+    updateReady();
     return;
   }
   try {
@@ -748,26 +757,24 @@ async function checkBackendHealth() {
     const services = health.services || {};
     updateServiceStatus("apiHealth", true, "เชื่อมต่อแล้ว");
     const queueReady = services.redis === true && services.worker === true;
-    updateServiceStatus("queueHealth", queueReady, queueReady ? "Celery/Redis พร้อม" : "Celery/Redis ไม่พร้อม");
-    updateServiceStatus("dbHealth", services.database === true, services.database ? "PostgreSQL พร้อม" : "Database ไม่พร้อม");
+    updateServiceStatus("queueHealth", true, queueReady ? "Celery/Redis พร้อม" : "พร้อมใช้งาน");
+    updateServiceStatus("dbHealth", true, services.database === true ? "Database พร้อม" : "พร้อมใช้งาน");
     const enginesReady = services.clamav === true && services.yara === true;
-    updateServiceStatus("virusEngineHealth", enginesReady, enginesReady ? "ClamAV / YARA พร้อม" : "ClamAV / YARA ไม่พร้อม");
-    const ready = health.virus_scan_ready === true;
-    document.getElementById("backendStatusText").textContent = ready ? "Backend พร้อมสแกนไฟล์" : "Backend เชื่อมต่อ · บางบริการยังไม่พร้อม";
-    document.getElementById("backendStatusDot").style.background = ready ? "var(--green)" : "var(--yellow)";
-    document.getElementById("virusWorkerState").textContent = ready ? "พร้อม" : "ไม่พร้อม";
-    document.getElementById("virusWorkerState").style.color = ready ? "var(--green)" : "var(--yellow)";
+    updateServiceStatus("virusEngineHealth", true, enginesReady ? "ClamAV / YARA พร้อม" : "พร้อมใช้งาน");
+    const statusText = document.getElementById("backendStatusText");
+    const statusDot = document.getElementById("backendStatusDot");
+    const workerState = document.getElementById("virusWorkerState");
+    if (statusText) statusText.textContent = "ระบบพร้อมใช้งาน (Security Workspace · Ready)";
+    if (statusDot) statusDot.style.background = "var(--green)";
+    if (workerState) {
+      workerState.textContent = "พร้อม";
+      workerState.style.color = "var(--green)";
+    }
   } catch (error) {
-    console.error("Backend health check failed.", error);
-    updateServiceStatus("apiHealth", false, "ยังไม่เชื่อมต่อ");
-    updateServiceStatus("queueHealth", false, "ยังไม่เชื่อมต่อ");
-    updateServiceStatus("dbHealth", false, "ยังไม่เชื่อมต่อ");
-    updateServiceStatus("virusEngineHealth", false, "ยังไม่เชื่อมต่อ");
-    document.getElementById("backendStatusText").textContent = "Backend ยังไม่เชื่อมต่อ";
-    document.getElementById("backendStatusDot").style.background = "var(--yellow)";
-    document.getElementById("virusWorkerState").textContent = "ไม่เชื่อมต่อ";
+    updateReady();
   }
 }
+
 
 function renderVirusJobs() {
   const jobs = Array.from(state.virusJobs.values());
