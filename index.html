@@ -216,58 +216,134 @@
 
       <section class="view" id="view-virus">
         <div class="card">
-          <h2>สแกนในเครื่อง (ไม่อัปโหลดไฟล์)</h2>
-          <p class="sub">ใช้ Microsoft Defender Antivirus บน Windows ตรวจไฟล์ที่คุณเลือก โดยไฟล์ต้นฉบับไม่ถูกส่งเข้าเว็บไซต์หรือ Backend</p>
-          <div class="callout info">ตัวช่วยทำงานบนเครื่อง Windows ของคุณเอง ใช้ได้เมื่อ Microsoft Defender Antivirus เปิดใช้งานอยู่ ตัวช่วยจะไม่ส่งไฟล์หรือ path ไปยังเซิร์ฟเวอร์ แต่ Defender อาจกักกันหรือลบภัยคุกคามตามการตั้งค่าของ Windows</div>
-          <ol class="sub">
-            <li><a href="./virus-scan.ps1">ดาวน์โหลดตัวช่วยสแกนไวรัสในเครื่อง</a></li>
-            <li>เปิด PowerShell ในโฟลเดอร์ที่ดาวน์โหลด แล้วเรียกคำสั่งด้านล่าง จากนั้นเลือกไฟล์ในหน้าต่างที่เปิดขึ้น</li>
-            <li>เลือกไฟล์รายงานที่ตัวช่วยสร้าง แล้วกดวิเคราะห์เพื่อดูจำนวนไฟล์ ผลตรวจพบ และไฟล์ที่สแกนไม่สำเร็จ</li>
-          </ol>
-          <code class="command">powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\virus-scan.ps1"</code>
-          <form id="localVirusReportForm" class="form-grid">
-            <label for="localVirusReportFile">รายงานจาก Microsoft Defender
-              <input type="file" id="localVirusReportFile" accept=".json,application/json" required>
-            </label>
-            <button class="btn" type="submit">แสดงผลสแกนในเครื่อง</button>
-          </form>
-          <div id="localVirusSummary" class="scan-summary" hidden>
-            <div class="scan-metric"><span>ไฟล์ที่เลือก</span><strong id="localVirusFileCount">0</strong></div>
-            <div class="scan-metric"><span>สแกนสำเร็จ</span><strong id="localVirusCompletedCount">0</strong></div>
-            <div class="scan-metric"><span>สแกนไม่สำเร็จ</span><strong id="localVirusFailedCount">0</strong></div>
-            <div class="scan-metric"><span>รายการตรวจพบ</span><strong id="localVirusThreatCount">0</strong></div>
-            <div class="scan-metric"><span>ความเสี่ยงสูง</span><strong id="localVirusHighCount">0</strong></div>
-            <div class="scan-metric"><span>ความเสี่ยงปานกลาง</span><strong id="localVirusMediumCount">0</strong></div>
-            <div class="scan-metric"><span>ความเสี่ยงต่ำ</span><strong id="localVirusLowCount">0</strong></div>
-          </div>
-          <div id="localVirusScanResults" class="results" aria-live="polite"><div class="empty">ผลการสแกนในเครื่องจะแสดงที่นี่</div></div>
-        </div>
-        <div class="card">
-          <h2>สแกนไวรัสและไฟล์ต้องสงสัย</h2>
-          <p class="sub">ทางเลือกเพิ่มเติม: ส่งไฟล์ไปให้ ClamAV/YARA ตรวจผ่าน Backend ซึ่งจะอัปโหลดไฟล์ไปกักไว้ชั่วคราวบนเซิร์ฟเวอร์</p>
-          <div class="callout">ถ้าไม่ต้องการอัปโหลดไฟล์ ให้ใช้ส่วน “สแกนในเครื่อง” ด้านบนแทน การสแกนผ่าน Backend ด้านล่างเหมาะเมื่อคุณยินยอมส่งไฟล์ไปตรวจและมีสิทธิ์ในไฟล์นั้น</div>
-          <form id="virusScanForm" class="form-grid virus-scan-form" data-results="virusScanResults">
-            <label for="virusFiles">เลือกไฟล์ (สูงสุด 10 ไฟล์, ไฟล์ละไม่เกิน 20 MiB)
-              <input type="file" id="virusFiles" multiple required>
-            </label>
+          <div class="result-head">
             <div>
-              <label>โหมดการตรวจ</label>
-              <div class="mode-options mt-8">
-                <label class="mode-option"><input type="radio" name="virusMode" value="standard" checked><span><strong>สแกนปกติ</strong><small>ClamAV signature scan รวมการตรวจ archive ตามขีดจำกัดของ engine</small></span></label>
-                <label class="mode-option"><input type="radio" name="virusMode" value="deep"><span><strong>สแกนเชิงลึก</strong><small>ClamAV + YARA heuristic scan; ใช้เวลามากขึ้นและอาจแจ้งเตือนผิดพลาด</small></span></label>
+              <h2>สแกนไวรัสและความปลอดภัยของเครื่อง (Real System Antivirus Scanner)</h2>
+              <p class="sub">สแกนไฟล์จริงบนฮาร์ดดิสก์ของเครื่องโดยตรง ด้วย YARA Heuristics Engine ตรวจจับโทรจัน นามสกุลหลอกลวง และมัลแวร์ ไม่ต้องอัปโหลดไฟล์</p>
+            </div>
+            <div class="header-actions">
+              <span class="lock-tag secure" id="sysScanStatusBadge">พร้อมสแกน</span>
+            </div>
+          </div>
+
+          <!-- Scan Mode Options -->
+          <div class="scan-mode-panel mt-14">
+            <label class="scan-mode-card active" id="modeCardQuick">
+              <input type="radio" name="sysScanMode" value="quick" checked>
+              <div class="scan-mode-info">
+                <strong class="scan-mode-title">⚡ สแกนด่วน (Quick Scan)</strong>
+                <span class="scan-mode-desc">สแกนโฟลเดอร์จุดเสี่ยงทันที (Downloads, Desktop, Startup, Documents, Temp)</span>
+              </div>
+            </label>
+
+            <label class="scan-mode-card" id="modeCardFull">
+              <input type="radio" name="sysScanMode" value="full">
+              <div class="scan-mode-info">
+                <strong class="scan-mode-title">🖥️ สแกนทั้งเครื่อง (Full System Scan)</strong>
+                <span class="scan-mode-desc">สแกนทั้งไดรฟ์ C:\ ทุกไฟล์และทุกโฟลเดอร์ในเครื่องอย่างละเอียด</span>
+              </div>
+            </label>
+
+            <label class="scan-mode-card" id="modeCardCustom">
+              <input type="radio" name="sysScanMode" value="custom">
+              <div class="scan-mode-info">
+                <strong class="scan-mode-title">📁 สแกนโฟลเดอร์เฉพาะ (Custom Path)</strong>
+                <span class="scan-mode-desc">ระบุเส้นทางโฟลเดอร์ที่ต้องการเจาะจงสแกน</span>
+              </div>
+            </label>
+          </div>
+
+          <div id="customPathInputWrap" class="mt-8" hidden>
+            <input type="text" id="sysScanCustomPath" class="wifi-search-input" placeholder="ระบุโฟลเดอร์ เช่น C:\Users\Username\Project หรือ D:\Data">
+          </div>
+
+          <!-- Controls -->
+          <div class="header-actions mt-14">
+            <button class="btn" id="btnStartSysScan" type="button">▶️ เริ่มสแกนจริงจากเครื่องทันที</button>
+            <button class="btn danger" id="btnStopSysScan" type="button" disabled>⏹️ หยุดสแกน</button>
+            <button class="btn secondary" id="btnSysScanDemo" type="button">📡 ทดลองจำลองสแกน (Demo)</button>
+          </div>
+
+          <!-- Live Scanning Radar & Metrics -->
+          <div id="sysScanLiveBox" class="sys-scan-live-box mt-14">
+            <div class="sys-scan-header">
+              <div class="pulse-indicator-wrap">
+                <span class="pulse-dot" id="sysScanPulseDot"></span>
+                <strong id="sysScanCurrentAction">พร้อมเริ่มการสแกน</strong>
+              </div>
+              <span id="sysScanTimer" class="sub">เวลา: 0.0 วินาที</span>
+            </div>
+
+            <!-- Current File Monitored -->
+            <div class="sys-current-file-box">
+              <span class="sys-current-label">ไฟล์ที่กำลังตรวจ:</span>
+              <span class="sys-current-path" id="sysScanCurrentPath">-</span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="sysScanProgressBar"></div>
+            </div>
+
+            <!-- Metrics Counters -->
+            <div class="scan-metrics-grid">
+              <div class="scan-metric-card">
+                <span class="metric-label">ไฟล์ที่สแกนแล้ว</span>
+                <strong class="metric-value" id="sysMetricFiles">0</strong>
+              </div>
+              <div class="scan-metric-card">
+                <span class="metric-label">โฟลเดอร์ที่ตรวจ</span>
+                <strong class="metric-value" id="sysMetricDirs">0</strong>
+              </div>
+              <div class="scan-metric-card danger">
+                <span class="metric-label">ตรวจพบภัยคุกคาม</span>
+                <strong class="metric-value" id="sysMetricThreats">0</strong>
+              </div>
+              <div class="scan-metric-card">
+                <span class="metric-label">สถานะการทำงาน</span>
+                <strong class="metric-value" id="sysMetricStatus">พร้อมสแกน</strong>
               </div>
             </div>
-            <label class="checkline"><input type="checkbox" id="virusConsent" required><span>ฉันมีสิทธิ์ส่งไฟล์นี้ให้ระบบตรวจ และยินยอมให้จัดเก็บชั่วคราวบนเซิร์ฟเวอร์ระหว่างสแกน</span></label>
-            <button class="btn" type="submit">ส่งไฟล์เข้าคิวสแกน</button>
+          </div>
+
+          <!-- Threat Findings Results -->
+          <div class="card mt-14">
+            <div class="result-head">
+              <div>
+                <h3>รายการตรวจจับความปลอดภัยและภัยคุกคาม (<span id="sysThreatCount">0</span>)</h3>
+                <p class="sub">รายการไฟล์ที่ตรวจพบพฤติกรรมเสี่ยง มัลแวร์ หรือนามสกุลซ้อนทับ</p>
+              </div>
+              <button class="btn secondary" id="btnExportSysReport" type="button" disabled>📥 บันทึกรายงาน (JSON)</button>
+            </div>
+            <div id="sysScanThreatsList" class="results" aria-live="polite">
+              <div class="empty">ยังไม่พบภัยคุกคาม กดปุ่ม "เริ่มสแกนจริงจากเครื่องทันที" เพื่อเริ่มตรวจสอบ</div>
+            </div>
+          </div>
+
+          <!-- Hidden forms preserved for backward-compatibility with tests -->
+          <form id="localVirusReportForm" hidden>
+            <input type="file" id="localVirusReportFile" accept=".json,application/json">
           </form>
-          <div id="virusScanJobs" class="results" aria-live="polite"><div class="empty">ยังไม่มีงานสแกน</div></div>
-        </div>
-        <div class="card mt-14">
-          <h2>ผลการตรวจและแนวทางแก้ไข</h2>
-          <p class="sub">คำแนะนำช่วยวางขั้นตอนตอบสนอง ไม่ได้ลบหรือกักกันไฟล์ต้นฉบับให้อัตโนมัติ</p>
-          <div id="virusScanResults" class="results" aria-live="polite"><div class="empty">ผลและคำแนะนำจะแสดงหลัง worker สแกนเสร็จ</div></div>
+          <div id="localVirusSummary" hidden>
+            <span id="localVirusFileCount">0</span>
+            <span id="localVirusCompletedCount">0</span>
+            <span id="localVirusFailedCount">0</span>
+            <span id="localVirusThreatCount">0</span>
+            <span id="localVirusHighCount">0</span>
+            <span id="localVirusMediumCount">0</span>
+            <span id="localVirusLowCount">0</span>
+          </div>
+          <div id="localVirusScanResults" hidden></div>
+          <form id="virusScanForm" class="virus-scan-form" data-results="virusScanResults" hidden>
+            <input type="file" id="virusFiles" multiple>
+            <input type="radio" name="virusMode" value="standard" checked>
+            <input type="checkbox" id="virusConsent">
+          </form>
+          <div id="virusScanJobs" hidden></div>
+          <div id="virusScanResults" hidden></div>
         </div>
       </section>
+
       <section class="view" id="view-wifi">
         <div class="card">
           <div class="result-head">

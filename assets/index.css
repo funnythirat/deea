@@ -309,3 +309,38 @@ a { color: var(--blue); }
 .wifi-recs h5 { margin: 0 0 8px; font-size: 12px; color: var(--cyan); text-transform: uppercase; letter-spacing: 0.5px; }
 .wifi-recs ul { margin: 0; padding-left: 18px; font-size: 11px; color: #cbd5e1; line-height: 1.6; }
 .wifi-recs li { margin-bottom: 4px; }
+
+/* Real System Antivirus Scanner */
+.scan-mode-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 768px) { .scan-mode-panel { grid-template-columns: 1fr; } }
+.scan-mode-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: #101c2e; cursor: pointer; transition: all .2s ease; }
+.scan-mode-card:hover { border-color: #3b5070; background: #142338; }
+.scan-mode-card.active { border-color: var(--cyan); background: #132b45; box-shadow: 0 0 10px rgba(6,182,212,0.15); }
+.scan-mode-card input[type="radio"] { margin-top: 3px; cursor: pointer; accent-color: var(--cyan); }
+.scan-mode-info { display: flex; flex-direction: column; gap: 4px; }
+.scan-mode-title { font-size: 13px; color: var(--text); }
+.scan-mode-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+.sys-scan-live-box { background: #0c1626; border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+.sys-scan-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.pulse-indicator-wrap { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); }
+.pulse-dot { width: 10px; height: 10px; border-radius: 50%; background: #22c55e; }
+.pulse-dot.scanning { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); animation: pulse 1s infinite; }
+.pulse-dot.danger { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+
+.sys-current-file-box { display: flex; align-items: center; gap: 8px; background: #101c2e; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; overflow: hidden; }
+.sys-current-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.sys-current-path { font-family: monospace; font-size: 11px; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.progress-bar-container { width: 100%; height: 8px; background: #17263c; border-radius: 99px; overflow: hidden; margin-bottom: 14px; }
+.progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #06b6d4, #3b82f6); transition: width 0.3s ease; }
+.progress-bar-fill.scanning { background: linear-gradient(90deg, #06b6d4, #22c55e); }
+.progress-bar-fill.danger { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+
+.scan-metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 600px) { .scan-metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+.scan-metric-card { background: #101c2e; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.scan-metric-card .metric-label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+.scan-metric-card .metric-value { font-size: 16px; color: var(--text); }
+.scan-metric-card.danger .metric-value { color: #f87171; }
+

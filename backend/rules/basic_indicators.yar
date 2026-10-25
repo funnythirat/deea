@@ -31,3 +31,58 @@ rule Heuristic_JavaScript_Decode_Dynamic_Execute
     condition:
         1 of ($decode*) and 1 of ($execute*)
 }
+
+rule Malware_EICAR_Test_File
+{
+    meta:
+        description = "Standard Antivirus Test Signature (EICAR) used for testing detection capability."
+        severity = "high"
+        recommendation = "ไฟล์ทดสอบไวรัสมาตรฐาน EICAR ยืนยันว่าเครื่องยนต์ตรวจจับทำงานได้อย่างถูกต้อง"
+
+    strings:
+        $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*" ascii
+
+    condition:
+        $eicar
+}
+
+rule Heuristic_Ransomware_Note_Indicators
+{
+    meta:
+        description = "File contains ransomware extortion and decryption demand indicators."
+        severity = "high"
+        recommendation = "ตรวจพบข้อความเรียกค่าไถ่หรือข่มขู่เข้ารหัสข้อมูล แยกเครื่องออกจากเครือข่ายทันทีและตรวจสอบการสำรองข้อมูล"
+
+    strings:
+        $ransom1 = "all your files have been encrypted" nocase ascii wide
+        $ransom2 = "your personal files are encrypted" nocase ascii wide
+        $ransom3 = "send bitcoin to" nocase ascii wide
+        $ransom4 = "pay ransom" nocase ascii wide
+        $ransom5 = "to decrypt your files" nocase ascii wide
+        $ransom6 = "how to decrypt" nocase ascii wide
+
+    condition:
+        2 of ($ransom*)
+}
+
+rule Heuristic_Webshell_PHP_Eval
+{
+    meta:
+        description = "PHP script with obfuscated command execution / webshell backdoor pattern."
+        severity = "high"
+        recommendation = "พบรูปแบบ Webshell หรือคำสั่งลอบรันโค้ดระยะไกล ลบไฟล์หรือกักกันเพื่อตรวจสอบแหล่งที่มา"
+
+    strings:
+        $php = "<?php" nocase ascii
+        $eval = "eval(" nocase ascii
+        $b64 = "base64_decode(" nocase ascii
+        $post = "$_POST[" ascii
+        $req = "$_REQUEST[" ascii
+        $pass = "passthru(" nocase ascii
+        $sys = "system(" nocase ascii
+        $shell = "shell_exec(" nocase ascii
+
+    condition:
+        $php and ($eval or $pass or $sys or $shell) and ($b64 or $post or $req)
+}
+

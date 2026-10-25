@@ -695,6 +695,41 @@ def wifi_scan_live() -> dict:
     return scan_local_wifi()
 
 
+class SystemScanRequest(BaseModel):
+    mode: str = "quick"
+    custom_path: str | None = None
+
+
+@app.post("/api/system-scan/start")
+@app.post("/api/v1/system-scan/start")
+def start_system_scan(payload: SystemScanRequest = SystemScanRequest()) -> dict:
+    from app.system_scanner import SystemScanner
+
+    scanner = SystemScanner.get_instance()
+    success = scanner.start_scan(mode=payload.mode, custom_path=payload.custom_path)
+    return {"started": success, "status": scanner.get_status()}
+
+
+@app.get("/api/system-scan/status")
+@app.get("/api/v1/system-scan/status")
+def get_system_scan_status() -> dict:
+    from app.system_scanner import SystemScanner
+
+    scanner = SystemScanner.get_instance()
+    return scanner.get_status()
+
+
+@app.post("/api/system-scan/stop")
+@app.post("/api/v1/system-scan/stop")
+def stop_system_scan() -> dict:
+    from app.system_scanner import SystemScanner
+
+    scanner = SystemScanner.get_instance()
+    success = scanner.stop_scan()
+    return {"stopped": success, "status": scanner.get_status()}
+
+
+
 
 @app.get("/api/v1/health")
 def health(db: Session = Depends(get_db)) -> dict:

@@ -737,7 +737,17 @@ class VirusScanApiTests(unittest.TestCase):
         self.assertIn("availableNetworks", data)
         self.assertIsInstance(data["availableNetworks"], list)
 
+    def test_system_scan_endpoints(self):
+        st = self.client.get("/api/system-scan/status")
+        self.assertEqual(st.status_code, 200)
+        self.assertIn("status", st.json())
+
+        stop_res = self.client.post("/api/system-scan/stop")
+        self.assertEqual(stop_res.status_code, 200)
+        self.assertIn("stopped", stop_res.json())
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

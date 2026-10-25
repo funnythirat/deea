@@ -1341,3 +1341,275 @@ document.querySelectorAll(".virus-scan-form").forEach((scanForm) => {
 
 checkBackendHealth();
 if (apiBase) window.setInterval(checkBackendHealth, 15000);
+
+// --- Real System Antivirus Scanner Logic ---
+const modeRadios = document.querySelectorAll('input[name="sysScanMode"]');
+const customPathWrap = document.getElementById("customPathInputWrap");
+modeRadios.forEach((radio) => {
+  radio.addEventListener("change", (e) => {
+    document.querySelectorAll(".scan-mode-card").forEach((card) => card.classList.remove("active"));
+    const parentCard = e.target.closest(".scan-mode-card");
+    if (parentCard) parentCard.classList.add("active");
+    if (customPathWrap) {
+      customPathWrap.hidden = e.target.value !== "custom";
+    }
+  });
+});
+
+let sysScanPollTimer = null;
+let sysScanLastData = null;
+
+function renderSysThreats(threats) {
+  const listEl = document.getElementById("sysScanThreatsList");
+  const countEl = document.getElementById("sysThreatCount");
+  const exportBtn = document.getElementById("btnExportSysReport");
+  if (countEl) countEl.textContent = String(threats.length);
+  if (!listEl) return;
+
+  if (threats.length === 0) {
+    listEl.innerHTML = '<div class="empty">✅ ยังไม่พบภัยคุกคามในระบบ เครื่องของคุณปลอดภัยตามกฎที่ตรวจสอบ</div>';
+    if (exportBtn) exportBtn.disabled = true;
+    return;
+  }
+
+  if (exportBtn) exportBtn.disabled = false;
+  listEl.replaceChildren();
+
+  threats.forEach((th) => {
+    const art = document.createElement("article");
+    art.className = `finding ${th.level || "high"}`;
+
+    const h = document.createElement("h4");
+    h.textContent = `🚨 ${th.threat_name}: ${th.filename}`;
+
+    const pPath = document.createElement("p");
+    pPath.className = "sub";
+    pPath.textContent = `📁 ที่อยู่ไฟล์: ${th.path}`;
+
+    const pDetail = document.createElement("p");
+    pDetail.textContent = th.detail;
+
+    const pRec = document.createElement("p");
+    pRec.className = "recommendation";
+    pRec.textContent = `แนวทางแก้ไข: ${th.recommendation}`;
+
+    art.append(h, pPath, pDetail, pRec);
+    listEl.append(art);
+  });
+}
+
+function updateSysScanUI(data) {
+  sysScanLastData = data;
+  const badge = document.getElementById("sysScanStatusBadge");
+  const actionEl = document.getElementById("sysScanCurrentAction");
+  const pathEl = document.getElementById("sysScanCurrentPath");
+  const timerEl = document.getElementById("sysScanTimer");
+  const progressBar = document.getElementById("sysScanProgressBar");
+  const pulseDot = document.getElementById("sysScanPulseDot");
+
+  const metricFiles = document.getElementById("sysMetricFiles");
+  const metricDirs = document.getElementById("sysMetricDirs");
+  const metricThreats = document.getElementById("sysMetricThreats");
+  const metricStatus = document.getElementById("sysMetricStatus");
+
+  const startBtn = document.getElementById("btnStartSysScan");
+  const stopBtn = document.getElementById("btnStopSysScan");
+
+  if (metricFiles) metricFiles.textContent = String(data.files_scanned || 0);
+  if (metricDirs) metricDirs.textContent = String(data.directories_scanned || 0);
+  const threatsCount = (data.threats || []).length;
+  if (metricThreats) metricThreats.textContent = String(threatsCount);
+  if (timerEl) timerEl.textContent = `เวลา: ${data.elapsed_seconds || 0} วินาที`;
+  if (pathEl) pathEl.textContent = data.current_file || "-";
+
+  if (data.status === "scanning") {
+    if (badge) {
+      badge.textContent = "กำลังสแกนสด...";
+      badge.className = "lock-tag warning";
+    }
+    if (actionEl) actionEl.textContent = "กำลังตรวจสอบไฟล์บนดิสก์จริง...";
+    if (metricStatus) metricStatus.textContent = "กำลังสแกน...";
+    if (pulseDot) pulseDot.className = "pulse-dot scanning";
+    if (progressBar) {
+      progressBar.className = threatsCount > 0 ? "progress-bar-fill danger" : "progress-bar-fill scanning";
+      const pct = Math.min(95, Math.max(10, Math.floor((data.files_scanned || 1) % 100)));
+      progressBar.style.width = `${pct}%`;
+    }
+    if (startBtn) startBtn.disabled = true;
+    if (stopBtn) stopBtn.disabled = false;
+  } else {
+    if (pulseDot) pulseDot.className = threatsCount > 0 ? "pulse-dot danger" : "pulse-dot";
+    if (progressBar) {
+      progressBar.style.width = data.status === "completed" ? "100%" : "0%";
+    }
+    if (startBtn) startBtn.disabled = false;
+    if (stopBtn) stopBtn.disabled = true;
+
+    if (data.status === "completed") {
+      if (badge) {
+        badge.textContent = threatsCount > 0 ? `พบ ${threatsCount} ภัยคุกคาม` : "สแกนสำเร็จ ปลอดภัย";
+        badge.className = threatsCount > 0 ? "lock-tag danger" : "lock-tag secure";
+      }
+      if (actionEl) actionEl.textContent = "การสแกนเสร็จสิ้น";
+      if (metricStatus) metricStatus.textContent = "เสร็จสิ้น";
+    } else if (data.status === "stopped") {
+      if (badge) {
+        badge.textContent = "หยุดสแกนแล้ว";
+        badge.className = "lock-tag warning";
+      }
+      if (actionEl) actionEl.textContent = "การสแกนถูกหยุดโดยผู้ใช้";
+      if (metricStatus) metricStatus.textContent = "หยุดแล้ว";
+    }
+  }
+
+  renderSysThreats(data.threats || []);
+}
+
+const btnStartSys = document.getElementById("btnStartSysScan");
+if (btnStartSys) {
+  btnStartSys.addEventListener("click", async () => {
+    const selectedMode = document.querySelector('input[name="sysScanMode"]:checked')?.value || "quick";
+    const customPathVal = document.getElementById("sysScanCustomPath")?.value.trim() || "";
+
+    try {
+      const res = await fetch("/api/system-scan/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: selectedMode, custom_path: customPathVal || null }),
+        cache: "no-store",
+      });
+
+      if (!res.ok) throw new Error("Backend ตอบกลับสถานะ " + res.status);
+      const data = await res.json();
+      updateSysScanUI(data.status);
+
+      if (sysScanPollTimer) clearInterval(sysScanPollTimer);
+      sysScanPollTimer = setInterval(async () => {
+        try {
+          const stRes = await fetch("/api/system-scan/status", { cache: "no-store" });
+          if (stRes.ok) {
+            const stData = await stRes.json();
+            updateSysScanUI(stData);
+            if (stData.status !== "scanning") {
+              clearInterval(sysScanPollTimer);
+              sysScanPollTimer = null;
+            }
+          }
+        } catch {
+          clearInterval(sysScanPollTimer);
+          sysScanPollTimer = null;
+        }
+      }, 500);
+
+    } catch (err) {
+      const confirmDemo = window.confirm(
+        `⚠️ คุณกำลังเปิดเว็บผ่านอินเทอร์เน็ต (${location.hostname})\nเบราว์เซอร์ไม่อนุญาตให้เว็บไซต์บนอินเทอร์เน็ตเข้าถึงฮาร์ดดิสก์ C:\\ เพื่อความปลอดภัย\n\n💡 ต้องการทดลอง "โหมดจำลองการสแกน (Demo Simulation)" หรือไม่?\n(หรือดับเบิลคลิกไฟล์ run-app.bat ในเครื่องเพื่อสแกนเครื่องจริง)`
+      );
+      if (confirmDemo) {
+        runSysScanDemo();
+      }
+    }
+  });
+}
+
+const btnStopSys = document.getElementById("btnStopSysScan");
+if (btnStopSys) {
+  btnStopSys.addEventListener("click", async () => {
+    try {
+      await fetch("/api/system-scan/stop", { method: "POST" });
+      if (sysScanPollTimer) {
+        clearInterval(sysScanPollTimer);
+        sysScanPollTimer = null;
+      }
+      const stRes = await fetch("/api/system-scan/status", { cache: "no-store" });
+      if (stRes.ok) updateSysScanUI(await stRes.json());
+    } catch (err) {
+      console.warn("Stop scan error:", err);
+    }
+  });
+}
+
+function runSysScanDemo() {
+  const demoFiles = [
+    "C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "C:\\Users\\User\\Downloads\\invoice_document.pdf",
+    "C:\\Users\\User\\Downloads\\setup_installer.exe",
+    "C:\\Users\\User\\Desktop\\urgent_bill.docx.exe",
+    "C:\\Users\\User\\AppData\\Local\\Temp\\eicar_test_sample.com",
+    "C:\\Users\\User\\Documents\\Work_Report_2026.xlsx",
+  ];
+
+  let step = 0;
+  const demoThreats = [];
+  const startBtn = document.getElementById("btnStartSysScan");
+  const stopBtn = document.getElementById("btnStopSysScan");
+  if (startBtn) startBtn.disabled = true;
+  if (stopBtn) stopBtn.disabled = false;
+
+  if (sysScanPollTimer) clearInterval(sysScanPollTimer);
+  sysScanPollTimer = setInterval(() => {
+    step++;
+    const currentPath = demoFiles[step % demoFiles.length];
+
+    if (currentPath.endsWith(".docx.exe") && !demoThreats.some(t => t.filename.includes("urgent_bill"))) {
+      demoThreats.push({
+        filename: "urgent_bill.docx.exe",
+        path: "C:\\Users\\User\\Desktop\\urgent_bill.docx.exe",
+        threat_name: "Suspicious.DoubleExtension",
+        level: "high",
+        detail: "ไฟล์ใช้นามสกุลซ้อนเพื่อพรางตัวเป็นเอกสาร Word แต่แท้จริงคือไฟล์ปฏิบัติการ (.exe)",
+        recommendation: "อย่าเปิดไฟล์เด็ดขาด ลบไฟล์นี้ทันที",
+      });
+    }
+
+    if (currentPath.includes("eicar") && !demoThreats.some(t => t.filename.includes("eicar"))) {
+      demoThreats.push({
+        filename: "eicar_test_sample.com",
+        path: "C:\\Users\\User\\AppData\\Local\\Temp\\eicar_test_sample.com",
+        threat_name: "Malware_EICAR_Test_File",
+        level: "high",
+        detail: "ไฟล์ทดสอบไวรัสมาตรฐาน EICAR ยืนยันว่าเครื่องยนต์ตรวจจับทำงานได้อย่างถูกต้อง",
+        recommendation: "ไฟล์ทดสอบสำหรับตรวจสอบระบบ Antivirus ปลอดภัยในการลบ",
+      });
+    }
+
+    updateSysScanUI({
+      status: step >= 20 ? "completed" : "scanning",
+      mode: "quick",
+      target: "C:\\Users\\User (จำลอง)",
+      files_scanned: step * 42,
+      directories_scanned: step * 5,
+      current_file: currentPath,
+      threats: demoThreats,
+      started_at: new Date(Date.now() - step * 500).toISOString(),
+      elapsed_seconds: (step * 0.5).toFixed(1),
+    });
+
+    if (step >= 20) {
+      clearInterval(sysScanPollTimer);
+      sysScanPollTimer = null;
+      if (startBtn) startBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = true;
+    }
+  }, 350);
+}
+
+const btnSysDemo = document.getElementById("btnSysScanDemo");
+if (btnSysDemo) {
+  btnSysDemo.addEventListener("click", runSysScanDemo);
+}
+
+const btnExportSys = document.getElementById("btnExportSysReport");
+if (btnExportSys) {
+  btnExportSys.addEventListener("click", () => {
+    if (!sysScanLastData || !sysScanLastData.threats) return;
+    const reportBlob = new Blob([JSON.stringify(sysScanLastData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(reportBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `system-antivirus-report-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
