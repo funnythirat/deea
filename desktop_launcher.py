@@ -12,11 +12,29 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-# Add backend directory to sys.path so app modules are discoverable
+# Safe encoding configuration for Windows consoles
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# Root directory configuration
 ROOT_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = ROOT_DIR / "backend"
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
+
+# Use local SQLite database by default for Desktop App mode
+DATA_DIR = ROOT_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = DATA_DIR / "scanner.db"
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{DB_PATH.as_posix()}")
 
 PORT = 8000
 HOST = "127.0.0.1"
@@ -40,17 +58,7 @@ def find_browser_app_executable():
     return None
 
 
-def run_server():
-    """Run uvicorn server in background thread."""
-    try:
-        import uvicorn
-        from app.main import app
-        uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
-    except Exception as exc:
-        print(f"[ERROR] Could not start local backend server: {exc}", file=sys.stderr)
-
-
-def wait_for_server(timeout=10):
+def wait_for_server(timeout=15):
     """Wait until local server starts responding."""
     start = time.time()
     while time.time() - start < timeout:
@@ -63,22 +71,12 @@ def wait_for_server(timeout=10):
     return False
 
 
-def main():
-    print("=" * 60)
-    print("   วิถีป้องกันรอบด้าน - Security Workspace Desktop App")
-    print("=" * 60)
-    print(f"[*] กำลังเริ่มต้นระบบเซิร์ฟเวอร์ในเครื่องที่ {URL} ...")
-
-    # Start server in daemon thread
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
-
-    # Wait for server readiness
+def launch_browser_window():
+    """Wait for server to be ready, then open Edge/Chrome in standalone App mode."""
     if not wait_for_server():
-        print("[!] ไม่สามารถเริ่มเซิร์ฟเวอร์ได้ทันเวลา กำลังลองเปิดหน้าต่างโดยตรง...")
+        print("[!] Server startup took longer than expected. Opening browser now...", flush=True)
 
-    print("[*] เซิร์ฟเวอร์พร้อมใช้งาน! กำลังเปิดหน้าต่าง Desktop App...")
-
+    print("[*] Server is ready! Opening Desktop App Window...", flush=True)
     browser_bin = find_browser_app_executable()
     if browser_bin:
         args = [
@@ -88,22 +86,41 @@ def main():
             "--new-window",
         ]
         try:
-            proc = subprocess.Popen(args)
-            print("[✓] เปิดหน้าต่าง Desktop สำเร็จ! คุณสามารถสแกน Wi-Fi จริงจากเครื่องได้ทันที")
-            print("[*] (ปิดหน้าต่างโปรแกรมเพื่อออกจากระบบ)")
-            proc.wait()
+            subprocess.Popen(args)
+            print("[✓] Desktop Window opened successfully!", flush=True)
+            print("[*] You can now scan real Wi-Fi directly in the window.", flush=True)
+            print("[*] Leave this console window open while using the app.", flush=True)
+            print("[*] Press Ctrl+C to stop the server when finished.", flush=True)
             return
         except Exception as err:
-            print(f"[!] ไม่สามารถเปิดในโหมด App ได้: {err}")
+            print(f"[!] Could not open in app mode: {err}", flush=True)
 
-    # Fallback to default browser
+    # Fallback to system default browser
     webbrowser.open(URL)
-    print("[✓] เปิดหน้าต่างเบราว์เซอร์สำเร็จ! กด Ctrl+C เพื่อออกจากโปรแกรม")
+    print("[✓] Browser window opened! Leave this console open while using.", flush=True)
+
+
+def main():
+    print("=" * 60, flush=True)
+    print("   Security Workspace - Desktop Application Launcher", flush=True)
+    print("=" * 60, flush=True)
+    print(f"[*] Starting local server on {URL} ...", flush=True)
+
+    # Launch browser window asynchronously once server responds
+    launcher_thread = threading.Thread(target=launch_browser_window, daemon=True)
+    launcher_thread.start()
+
+    # Run uvicorn directly in main thread so process stays alive
     try:
-        while True:
-            time.sleep(1)
+        import uvicorn
+        from app.main import app
+
+        uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
     except KeyboardInterrupt:
-        print("\n[*] ปิดโปรแกรมเรียบร้อยแล้ว")
+        print("\n[*] Application shutdown requested. Goodbye!", flush=True)
+    except Exception as exc:
+        print(f"\n[ERROR] Server failed to run: {exc}", file=sys.stderr, flush=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

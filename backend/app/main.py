@@ -522,17 +522,26 @@ def ensure_virus_scan_columns(bind=None) -> None:
 
 def initialize_database() -> None:
     QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
-    os.chmod(QUARANTINE_DIR, 0o700)
-    Base.metadata.create_all(bind=engine)
-    ensure_virus_scan_columns()
+    try:
+        os.chmod(QUARANTINE_DIR, 0o700)
+    except OSError:
+        pass
+    try:
+        Base.metadata.create_all(bind=engine)
+        ensure_virus_scan_columns()
+    except Exception as exc:
+        logger.warning("Database unavailable, operating without persistent database: %s", exc)
+
     cutoff = datetime.now(timezone.utc).timestamp() - 24 * 60 * 60
-    for path in QUARANTINE_DIR.iterdir():
-        if path.is_file() and path.stat().st_mtime < cutoff:
-            try:
-                path.unlink()
-                logger.warning("Removed stale quarantine file %s", path.name)
-            except OSError:
-                logger.exception("Could not remove stale quarantine file %s", path.name)
+    if QUARANTINE_DIR.is_dir():
+        for path in QUARANTINE_DIR.iterdir():
+            if path.is_file() and path.stat().st_mtime < cutoff:
+                try:
+                    path.unlink()
+                    logger.warning("Removed stale quarantine file %s", path.name)
+                except OSError:
+                    logger.exception("Could not remove stale quarantine file %s", path.name)
+
 
 
 @app.get("/", include_in_schema=False)

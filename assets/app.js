@@ -413,10 +413,21 @@ if (btnScanHardware) {
         badge.textContent = "สแกนไม่สำเร็จ";
         badge.className = "lock-tag danger";
       }
-      const msg = !apiBase && location.hostname.includes("github.io")
-        ? `⚠️ ขณะนี้คุณกำลังเปิดเว็บผ่าน GitHub Pages (ระบบจำกัดสิทธิ์เบราว์เซอร์ไม่ให้แอบสแกนฮาร์ดแวร์)\n\n📌 แนะนำ:\n1. ดับเบิลคลิกไฟล์ "รันแอปพลิเคชัน.bat" ในโฟลเดอร์โครงการ เพื่อเปิดโหมด Desktop App สแกนเครื่องจริงได้ 100%\n2. หรือคลิกปุ่ม "📡 จำลองสัญญาณ (Demo)" เพื่อทดลองใช้งาน`
-        : `ไม่สามารถสแกน Wi-Fi จริงจากเครื่องได้: ${err.message}\n(ตรวจสอบว่าเครื่องมีตัวรับสัญญาณ Wi-Fi และเปิด Wi-Fi อยู่ หรือดับเบิลคลิกไฟล์ รันแอปพลิเคชัน.bat)`;
-      window.alert(msg);
+      if (!apiBase && (location.hostname.includes("github.io") || location.protocol === "https:")) {
+        const switchDemo = window.confirm(
+          `⚠️ คุณกำลังเปิดเว็บผ่านอินเทอร์เน็ต (${location.hostname})\nเบราว์เซอร์มีระบบรักษาความปลอดภัย ป้องกันไม่ให้เว็บไซต์บนเน็ตแอบสแกนการ์ด Wi-Fi ภายในเครื่องคอมพิวเตอร์ของคุณโดยตรง\n\n📌 ต้องการให้แสดงสัญญาณแบบจำลอง (Demo) หรือไม่?`
+        );
+        if (switchDemo) {
+          renderWifiList(SAMPLE_WIFI_NETWORKS);
+          selectWifiNetwork(SAMPLE_WIFI_NETWORKS[0]);
+          if (badge) {
+            badge.textContent = "โหมดจำลอง (Demo)";
+            badge.className = "lock-tag warning";
+          }
+        }
+      } else {
+        window.alert(`ไม่สามารถสแกน Wi-Fi จริงจากเครื่องได้: ${err.message}\n(กรุณาดับเบิลคลิกไฟล์ run-app.bat หรือ run-desktop.bat เพื่อเปิดโหมด Desktop App)`);
+      }
     } finally {
       btnScanHardware.disabled = false;
       btnScanHardware.textContent = "⚡ สแกน Wi-Fi จริงจากเครื่องนี้";
