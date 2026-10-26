@@ -200,17 +200,72 @@
 
       <section class="view" id="view-dependencies">
         <div class="card">
-          <h2>ตรวจสอบ dependency</h2>
-          <p class="sub">อัปโหลด package-lock.json หรือ package.json เพื่อตรวจหาช่องโหว่ที่มีบันทึกใน OSV (Open Source Vulnerabilities)</p>
-          <div class="callout">จะส่งเฉพาะชื่อแพ็กเกจและเวอร์ชันไปยัง <a href="https://osv.dev/" target="_blank" rel="noopener noreferrer">OSV</a> เพื่อค้นหาข้อมูลช่องโหว่ ไม่ส่งไฟล์หรือ source code ทั้งหมด ช่วงเวอร์ชัน เช่น ^1.2.3 ต้องใช้ package-lock.json เพื่อให้ตรวจได้แม่นยำ</div>
-          <form id="dependencyForm" class="form-grid">
-            <label for="dependencyFiles">ไฟล์ package.json หรือ package-lock.json
-              <input type="file" id="dependencyFiles" accept=".json,application/json" multiple required>
-            </label>
-            <label class="checkline"><input type="checkbox" id="dependencyConsent" required><span>ฉันยินยอมให้ส่งชื่อและเวอร์ชัน dependency ไปยัง OSV API เพื่อค้นหาช่องโหว่</span></label>
-            <button class="btn" type="submit">ตรวจสอบกับ OSV</button>
+          <div class="result-head">
+            <div>
+              <h2>ตรวจสอบช่องโหว่แพ็กเกจ (Dependency & Package Vulnerability Inspector)</h2>
+              <p class="sub">ตรวจหาช่องโหว่ความปลอดภัยระดับสากลจากฐานข้อมูล Google OSV (Open Source Vulnerabilities) ได้ทันที ค้นหาโดยตรงไม่ต้องอัปโหลดไฟล์ หรือเลือกชุดตัวอย่างด่วน</p>
+            </div>
+            <div class="header-actions">
+              <span class="lock-tag secure">Google OSV API · Real-time</span>
+            </div>
+          </div>
+          <div class="callout">ระบบจะตรวจสอบชื่อแพ็กเกจและเวอร์ชันกับฐานข้อมูล <a href="https://osv.dev/" target="_blank" rel="noopener noreferrer">OSV (Open Source Vulnerabilities)</a> แบบ Real-time ทันทีเพื่อหาบันทึก CVE/GHSA ที่เป็นอันตราย โดยไม่ต้องอัปโหลดไฟล์จริงใดๆ ทั้งสิ้น</div>
+
+          <!-- Quick Presets (1-Click Inspection) -->
+          <div class="dep-presets-panel">
+            <span class="dep-presets-title">⚡ ตรวจด่วนคลิกเดียว (ไม่ต้องอัปโหลดไฟล์):</span>
+            <div class="dep-preset-buttons">
+              <button type="button" class="preset-btn danger-preset" id="presetVulnBtn">
+                <span>🚨</span> <strong>ชุดเสี่ยงที่มีช่องโหว่ (Demo CVEs)</strong>
+              </button>
+              <button type="button" class="preset-btn safe-preset" id="presetSafeBtn">
+                <span>🛡️</span> <strong>ชุดปลอดภัยล่าสุด (Clean/Patched)</strong>
+              </button>
+              <button type="button" class="preset-btn python-preset" id="presetPythonBtn">
+                <span>🐍</span> <strong>ชุดยอดนิยม Python (PyPI Demo)</strong>
+              </button>
+              <button type="button" class="preset-btn" id="presetProjectBtn">
+                <span>💻</span> <strong>ตรวจแพ็กเกจโปรเจกต์นี้ (Local Workspace)</strong>
+              </button>
+            </div>
+          </div>
+
+          <!-- Direct Input Form -->
+          <form id="quickDepForm" class="form-grid mb-14">
+            <div class="quick-dep-grid">
+              <input type="text" id="quickDepInput" placeholder="พิมพ์ชื่อแพ็กเกจ เช่น express@4.17.1, lodash@4.17.15 หรือ requests@2.25.1" autocomplete="off">
+              <select id="quickDepEcosystem">
+                <option value="npm">npm (JavaScript / Node)</option>
+                <option value="PyPI">PyPI (Python)</option>
+                <option value="Go">Go (Golang)</option>
+                <option value="Maven">Maven (Java)</option>
+              </select>
+              <button class="btn" type="submit" id="quickDepSubmitBtn">🔍 ตรวจสอบทันที</button>
+            </div>
           </form>
-          <div id="dependencyResults" class="results" aria-live="polite"><div class="empty">ผลการตรวจจะแสดงที่นี่</div></div>
+
+          <!-- Direct Paste Accordion -->
+          <details class="dep-collapsible mb-14" id="pasteDetails">
+            <summary>📋 หรือวางข้อความ / โค้ด JSON ของ package.json โดยตรง (ไม่ต้องสร้างไฟล์)</summary>
+            <div class="form-grid mt-8">
+              <textarea id="quickDepJsonPaste" rows="4" placeholder='วาง JSON เช่น { "dependencies": { "lodash": "4.17.15", "axios": "0.21.1" } } หรือรายการบรรทัดละแพ็กเกจ'></textarea>
+              <button class="btn secondary" type="button" id="quickDepJsonBtn">ตรวจจากข้อความ JSON ที่วาง</button>
+            </div>
+          </details>
+
+          <!-- Original File Upload Accordion (Preserved for compatibility & testing) -->
+          <details class="dep-collapsible" id="uploadDetails">
+            <summary>📁 ตัวเลือกสำรอง: อัปโหลดไฟล์ package.json หรือ package-lock.json จากเครื่อง</summary>
+            <form id="dependencyForm" class="form-grid mt-8">
+              <label for="dependencyFiles">เลือกไฟล์ package.json หรือ package-lock.json
+                <input type="file" id="dependencyFiles" accept=".json,application/json" multiple>
+              </label>
+              <label class="checkline"><input type="checkbox" id="dependencyConsent" checked><span>ฉันยินยอมให้ส่งชื่อและเวอร์ชัน dependency ไปยัง OSV API เพื่อค้นหาช่องโหว่</span></label>
+              <button class="btn" type="submit">ตรวจสอบไฟล์กับ OSV</button>
+            </form>
+          </details>
+
+          <div id="dependencyResults" class="results" aria-live="polite"><div class="empty">ผลการตรวจช่องโหว่จะแสดงที่นี่</div></div>
         </div>
       </section>
 

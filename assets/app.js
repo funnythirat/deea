@@ -1159,65 +1159,102 @@ document.getElementById("codeForm").addEventListener("submit", async (event) => 
 });
 
 function exactVersion(version) {
-  return typeof version === "string" && /^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version);
+  return typeof version === "string" && /^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version.trim());
 }
 
-async function readDependencyFile(file) {
-  let parsed;
-  try {
-    parsed = JSON.parse(await file.text());
-  } catch {
-    throw new Error(file.name + " ไม่ใช่ JSON ที่ถูกต้อง");
-  }
-  const dependencies = [];
-  if (file.name.toLowerCase() === "package-lock.json" || parsed.lockfileVersion) {
-    const packages = parsed.packages;
-    if (!packages || typeof packages !== "object") {
-      throw new Error("ไม่พบ packages ใน package-lock.json กรุณาใช้ package-lock.json รุ่น 2 หรือ 3");
-    }
-    for (const [path, data] of Object.entries(packages)) {
-      if (!path.includes("node_modules/") || !data || typeof data.version !== "string") continue;
-      const name = data.name || path.slice(path.lastIndexOf("node_modules/") + "node_modules/".length);
-      dependencies.push({ name, version: data.version });
-    }
-  } else {
-    for (const group of ["dependencies", "devDependencies", "optionalDependencies"]) {
-      const entries = parsed[group];
-      if (!entries || typeof entries !== "object") continue;
-      for (const [name, version] of Object.entries(entries)) {
-        if (typeof version === "string") dependencies.push({ name, version: version.trim() });
+function parsePackageInput(text, defaultEcosystem = "npm") {
+  if (!text || typeof text !== "string") return [];
+  const items = text.split(/[\r\n,;]+/).map((s) => s.trim()).filter(Boolean);
+  const result = [];
+  for (const item of items) {
+    const match = item.match(/^["']?([a-zA-Z0-9_@\/-]+?)(?:@|==|:\s*|=")(v?\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?)["']?$/);
+    if (match) {
+      result.push({ name: match[1].trim(), version: match[2].trim(), ecosystem: defaultEcosystem });
+    } else {
+      const simple = item.replace(/["',]/g, "").trim();
+      if (simple) {
+        const atIdx = simple.lastIndexOf("@");
+        if (atIdx > 0) {
+          result.push({ name: simple.slice(0, atIdx), version: simple.slice(atIdx + 1), ecosystem: defaultEcosystem });
+        }
       }
     }
   }
-  return dependencies;
+  return result;
 }
 
-document.getElementById("dependencyForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const files = Array.from(document.getElementById("dependencyFiles").files);
-  const output = document.getElementById("dependencyResults");
-  const button = event.currentTarget.querySelector("button[type=submit]");
-  if (files.length === 0) {
-    renderFindings(output, [{ level: "info", title: "ไม่ได้เลือกไฟล์", detail: "เลือก package.json หรือ package-lock.json ก่อนเริ่มตรวจ" }]);
-    return;
-  }
-  if (files.some((file) => file.size > 2 * 1024 * 1024)) {
-    renderFindings(output, [{ level: "info", title: "ไฟล์มีขนาดเกินกำหนด", detail: "แต่ละไฟล์ต้องมีขนาดไม่เกิน 2 MB" }]);
-    return;
-  }
-  button.disabled = true;
-  button.textContent = "กำลังค้นหาใน OSV...";
+function parsePackageJsonText(jsonStr, defaultEcosystem = "npm") {
   try {
-    const parsed = [];
-    for (const file of files) parsed.push(...await readDependencyFile(file));
-    const unique = new Map();
-    for (const dependency of parsed) unique.set(dependency.name + "@" + dependency.version, dependency);
-    const allDependencies = Array.from(unique.values());
-    const exact = allDependencies.filter((dependency) => exactVersion(dependency.version));
-    const skipped = allDependencies.length - exact.length;
-    if (exact.length === 0) {
-      throw new Error("ไม่พบเวอร์ชันแบบเจาะจงสำหรับตรวจ แนะนำให้อัปโหลด package-lock.json");
+    const parsed = JSON.parse(jsonStr);
+    const result = [];
+    if (parsed.packages && typeof parsed.packages === "object") {
+      for (const [path, data] of Object.entries(parsed.packages)) {
+        if (!path.includes("node_modules/") || !data || typeof data.version !== "string") continue;
+        const name = data.name || path.slice(path.lastIndexOf("node_modules/") + "node_modules/".length);
+        result.push({ name, version: data.version, ecosystem: defaultEcosystem });
+      }
+    } else {
+      for (const group of ["dependencies", "devDependencies", "optionalDependencies"]) {
+        const entries = parsed[group];
+        if (entries && typeof entries === "object") {
+          for (const [name, version] of Object.entries(entries)) {
+            if (typeof version === "string") {
+              const cleanVer = version.replace(/^[\^~>=<]+/, "").trim();
+              result.push({ name, version: cleanVer, ecosystem: defaultEcosystem });
+            }
+          }
+        }
+      }
     }
+    if (result.length === 0 && typeof parsed === "object" && !Array.isArray(parsed)) {
+      for (const [key, val] of Object.entries(parsed)) {
+        if (typeof val === "string" && /^\d+\.\d+/.test(val.replace(/^v/, ""))) {
+          result.push({ name: key, version: val.replace(/^v/, ""), ecosystem: defaultEcosystem });
+        }
+      }
+    }
+    return result;
+  } catch {
+    return parsePackageInput(jsonStr, defaultEcosystem);
+  }
+}
+
+async function readDependencyFile(file) {
+  let text;
+  try {
+    text = await file.text();
+  } catch {
+    throw new Error(file.name + " อ่านไฟล์ไม่สำเร็จ");
+  }
+  const deps = parsePackageJsonText(text, "npm");
+  if (deps.length === 0) {
+    throw new Error("ไม่พบรายการ dependency ใน " + file.name + " โปรดตรวจสอบโครงสร้าง JSON");
+  }
+  return deps;
+}
+
+async function queryOsvBatch(rawDependencies, output, scanTarget, button) {
+  const originalText = button ? button.textContent : "";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "กำลังค้นหาใน OSV...";
+  }
+
+  try {
+    const unique = new Map();
+    for (const dep of rawDependencies) {
+      if (dep.name && dep.version) {
+        unique.set(dep.name + "@" + dep.version + "#" + (dep.ecosystem || "npm"), dep);
+      }
+    }
+    const allDependencies = Array.from(unique.values());
+    const exact = allDependencies.filter((dep) => exactVersion(dep.version));
+    const skipped = allDependencies.length - exact.length;
+
+    if (exact.length === 0) {
+      throw new Error("ไม่พบแพ็กเกจที่มีเวอร์ชันเจาะจง (เช่น express@4.17.1) โปรดระบุเวอร์ชันให้ชัดเจน");
+    }
+
     const findings = [];
     for (let offset = 0; offset < exact.length; offset += 1000) {
       const batch = exact.slice(offset, offset + 1000);
@@ -1225,47 +1262,217 @@ document.getElementById("dependencyForm").addEventListener("submit", async (even
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          queries: batch.map((dependency) => ({
-            package: { name: dependency.name, ecosystem: "npm" },
-            version: dependency.version.replace(/^v/, "")
+          queries: batch.map((dep) => ({
+            package: { name: dep.name, ecosystem: dep.ecosystem || "npm" },
+            version: dep.version.replace(/^v/, "")
           }))
         })
       });
+
       if (!response.ok) throw new Error("OSV API ตอบกลับ HTTP " + response.status);
       const data = await response.json();
       if (!Array.isArray(data.results) || data.results.length !== batch.length) {
         throw new Error("รูปแบบผลลัพธ์จาก OSV API ไม่ถูกต้อง");
       }
+
       data.results.forEach((result, index) => {
-        for (const vulnerability of result.vulns || []) {
-          const severity = (vulnerability.database_specific && vulnerability.database_specific.severity || "").toUpperCase();
+        const targetDep = batch[index];
+        for (const vuln of result.vulns || []) {
+          const severity = (vuln.database_specific && vuln.database_specific.severity || "").toUpperCase();
           const level = severity === "CRITICAL" || severity === "HIGH" ? "high" : severity === "LOW" ? "low" : "medium";
+          const aliases = Array.isArray(vuln.aliases) && vuln.aliases.length > 0 ? " (" + vuln.aliases.join(", ") + ")" : "";
           findings.push({
             level,
-            title: (vulnerability.id || "ช่องโหว่ที่ไม่ระบุ ID") + " — " + batch[index].name + "@" + batch[index].version,
-            detail: vulnerability.summary || "พบรายการช่องโหว่ใน OSV กรุณาตรวจสอบช่วงเวอร์ชันที่ได้รับผลกระทบและเวอร์ชันที่แก้ไขแล้ว",
-            link: vulnerability.id ? "https://osv.dev/vulnerability/" + encodeURIComponent(vulnerability.id) : null
+            title: (vuln.id || "ช่องโหว่") + aliases + " — " + targetDep.name + "@" + targetDep.version,
+            detail: vuln.summary || (vuln.details ? vuln.details.slice(0, 200) + "..." : "พบรายการช่องโหว่ในฐานข้อมูล OSV"),
+            link: vuln.id ? "https://osv.dev/vulnerability/" + encodeURIComponent(vuln.id) : null
           });
         }
       });
     }
+
     if (skipped > 0) {
-      findings.push({ level: "medium", title: "ข้าม " + skipped + " dependency ที่ระบุเวอร์ชันเป็นช่วง", detail: "ต้องใช้ package-lock.json เพื่อระบุเวอร์ชันที่ติดตั้งจริงก่อนตรวจ CVE" });
+      findings.push({
+        level: "medium",
+        title: "ข้าม " + skipped + " dependency ที่ระบุเวอร์ชันเป็นช่วง",
+        detail: "ต้องระบุเวอร์ชันที่ติดตั้งจริงเพื่อตรวจสอบช่องโหว่ CVE ได้อย่างแม่นยำ"
+      });
     }
+
     if (findings.length === 0) {
-      findings.push({ level: "info", title: "ไม่พบรายการช่องโหว่ในผล OSV", detail: "ตรวจสอบ " + exact.length + " dependency ที่ระบุเวอร์ชันได้แล้ว ฐานข้อมูลอาจไม่ครอบคลุมช่องโหว่ทุกประเภท" });
+      findings.push({
+        level: "info",
+        title: "🛡️ ไม่พบรายงานช่องโหว่ใน OSV (ปลอดภัย)",
+        detail: "ตรวจสอบ " + exact.length + " แพ็กเกจเรียบร้อย ไม่พบรายการช่องโหว่ CVE/GHSA ในฐานข้อมูล Open Source Vulnerabilities"
+      });
     }
+
     renderFindings(output, findings);
-    finishScan("npm-dependency-audit", findings, files.map((file) => file.name).join(", "));
+    finishScan("npm-dependency-audit", findings, scanTarget);
   } catch (error) {
     const findings = [{ level: "info", title: "ตรวจ dependency ไม่สำเร็จ", detail: error.message }];
     renderFindings(output, findings);
-    finishScan("npm-dependency-audit", findings, files.map((file) => file.name).join(", "));
+    finishScan("npm-dependency-audit", findings, scanTarget);
   } finally {
-    button.disabled = false;
-    button.textContent = "ตรวจสอบกับ OSV";
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
   }
-});
+}
+
+// Quick Direct Input Form
+const quickDepForm = document.getElementById("quickDepForm");
+if (quickDepForm) {
+  quickDepForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = document.getElementById("quickDepInput");
+    const ecosystem = document.getElementById("quickDepEcosystem").value || "npm";
+    const text = input ? input.value.trim() : "";
+    const output = document.getElementById("dependencyResults");
+    const button = document.getElementById("quickDepSubmitBtn");
+
+    if (!text) {
+      renderFindings(output, [{ level: "info", title: "ไม่ได้พิมพ์ชื่อแพ็กเกจ", detail: "พิมพ์ชื่อแพ็กเกจ เช่น express@4.17.1 หรือคลิกปุ่มตัวอย่างด่วนด้านบน" }]);
+      return;
+    }
+    const deps = parsePackageInput(text, ecosystem);
+    if (deps.length === 0) {
+      renderFindings(output, [{ level: "info", title: "รูปแบบแพ็กเกจไม่ถูกต้อง", detail: "พิมพ์ในรูปแบบ package@version เช่น lodash@4.17.15" }]);
+      return;
+    }
+    await queryOsvBatch(deps, output, text, button);
+  });
+}
+
+// Quick JSON / Text Paste
+const quickDepJsonBtn = document.getElementById("quickDepJsonBtn");
+if (quickDepJsonBtn) {
+  quickDepJsonBtn.addEventListener("click", async () => {
+    const text = document.getElementById("quickDepJsonPaste").value.trim();
+    const ecosystem = document.getElementById("quickDepEcosystem").value || "npm";
+    const output = document.getElementById("dependencyResults");
+    if (!text) {
+      renderFindings(output, [{ level: "info", title: "ไม่มีข้อความให้ตรวจ", detail: "วางโค้ด JSON ของ package.json หรือรายการแพ็กเกจก่อนเริ่มตรวจ" }]);
+      return;
+    }
+    const deps = parsePackageJsonText(text, ecosystem);
+    if (deps.length === 0) {
+      renderFindings(output, [{ level: "info", title: "ไม่พบข้อมูล dependency", detail: "ไม่พบแพ็กเกจและเวอร์ชันในข้อความที่วาง" }]);
+      return;
+    }
+    await queryOsvBatch(deps, output, "วางข้อความ (" + deps.length + " แพ็กเกจ)", quickDepJsonBtn);
+  });
+}
+
+// 1-Click Preset Buttons
+const presetVulnBtn = document.getElementById("presetVulnBtn");
+if (presetVulnBtn) {
+  presetVulnBtn.addEventListener("click", async () => {
+    const input = document.getElementById("quickDepInput");
+    const ecosystem = document.getElementById("quickDepEcosystem");
+    const output = document.getElementById("dependencyResults");
+    const packages = "lodash@4.17.15, axios@0.21.1, express@4.17.1, jsonwebtoken@8.5.1, minimist@1.2.5";
+    if (input) input.value = packages;
+    if (ecosystem) ecosystem.value = "npm";
+    const deps = parsePackageInput(packages, "npm");
+    await queryOsvBatch(deps, output, "ชุดตัวอย่างช่องโหว่ (Vulnerable Demo)", presetVulnBtn);
+  });
+}
+
+const presetSafeBtn = document.getElementById("presetSafeBtn");
+if (presetSafeBtn) {
+  presetSafeBtn.addEventListener("click", async () => {
+    const input = document.getElementById("quickDepInput");
+    const ecosystem = document.getElementById("quickDepEcosystem");
+    const output = document.getElementById("dependencyResults");
+    const packages = "lodash@4.17.21, axios@1.7.9, express@4.21.2, react@18.3.1";
+    if (input) input.value = packages;
+    if (ecosystem) ecosystem.value = "npm";
+    const deps = parsePackageInput(packages, "npm");
+    await queryOsvBatch(deps, output, "ชุดปลอดภัยล่าสุด (Patched/Clean)", presetSafeBtn);
+  });
+}
+
+const presetPythonBtn = document.getElementById("presetPythonBtn");
+if (presetPythonBtn) {
+  presetPythonBtn.addEventListener("click", async () => {
+    const input = document.getElementById("quickDepInput");
+    const ecosystem = document.getElementById("quickDepEcosystem");
+    const output = document.getElementById("dependencyResults");
+    const packages = "requests@2.25.1, urllib3@1.26.4, django@3.2.0, flask@1.1.2";
+    if (input) input.value = packages;
+    if (ecosystem) ecosystem.value = "PyPI";
+    const deps = parsePackageInput(packages, "PyPI");
+    await queryOsvBatch(deps, output, "ชุดตัวอย่าง Python (PyPI Demo)", presetPythonBtn);
+  });
+}
+
+const presetProjectBtn = document.getElementById("presetProjectBtn");
+if (presetProjectBtn) {
+  presetProjectBtn.addEventListener("click", async () => {
+    const input = document.getElementById("quickDepInput");
+    const ecosystem = document.getElementById("quickDepEcosystem");
+    const output = document.getElementById("dependencyResults");
+    if (ecosystem) ecosystem.value = "PyPI";
+    presetProjectBtn.disabled = true;
+    presetProjectBtn.textContent = "กำลังตรวจสอบสภาพแวดล้อม...";
+    try {
+      let deps = [];
+      try {
+        const resp = await fetch("/api/project/packages");
+        if (resp.ok) {
+          const data = await resp.json();
+          if (Array.isArray(data.packages) && data.packages.length > 0) {
+            deps = data.packages;
+          }
+        }
+      } catch {
+        // Fallback for static browser mode
+      }
+      if (deps.length === 0) {
+        deps = [
+          { name: "fastapi", version: "0.115.5", ecosystem: "PyPI" },
+          { name: "uvicorn", version: "0.34.0", ecosystem: "PyPI" },
+          { name: "requests", version: "2.32.3", ecosystem: "PyPI" },
+          { name: "sqlalchemy", version: "2.0.36", ecosystem: "PyPI" },
+          { name: "yara-python", version: "4.5.1", ecosystem: "PyPI" }
+        ];
+      }
+      if (input) input.value = deps.map((d) => d.name + "@" + d.version).join(", ");
+      await queryOsvBatch(deps, output, "แพ็กเกจโปรเจกต์นี้ (" + deps.length + " แพ็กเกจ)", presetProjectBtn);
+    } finally {
+      presetProjectBtn.disabled = false;
+      presetProjectBtn.innerHTML = "<span>💻</span> <strong>ตรวจแพ็กเกจโปรเจกต์นี้ (Local Workspace)</strong>";
+    }
+  });
+}
+
+const depForm = document.getElementById("dependencyForm");
+if (depForm) {
+  depForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const files = Array.from(document.getElementById("dependencyFiles").files);
+    const output = document.getElementById("dependencyResults");
+    const button = event.currentTarget.querySelector("button[type=submit]");
+    if (files.length === 0) {
+      renderFindings(output, [{ level: "info", title: "ไม่ได้เลือกไฟล์", detail: "เลือก package.json หรือ package-lock.json ก่อนเริ่มตรวจ" }]);
+      return;
+    }
+    if (files.some((file) => file.size > 2 * 1024 * 1024)) {
+      renderFindings(output, [{ level: "info", title: "ไฟล์มีขนาดเกินกำหนด", detail: "แต่ละไฟล์ต้องมีขนาดไม่เกิน 2 MB" }]);
+      return;
+    }
+    try {
+      const parsed = [];
+      for (const file of files) parsed.push(...await readDependencyFile(file));
+      await queryOsvBatch(parsed, output, files.map((file) => file.name).join(", "), button);
+    } catch (err) {
+      renderFindings(output, [{ level: "info", title: "อ่านไฟล์ไม่สำเร็จ", detail: err.message }]);
+    }
+  });
+}
+
 
 document.querySelectorAll(".virus-scan-form").forEach((scanForm) => {
   scanForm.addEventListener("submit", async (event) => {

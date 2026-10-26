@@ -729,9 +729,46 @@ def stop_system_scan() -> dict:
     return {"stopped": success, "status": scanner.get_status()}
 
 
+@app.get("/api/project/packages")
+@app.get("/api/v1/project/packages")
+def get_project_packages() -> dict:
+    """Returns detected installed project packages for live dependency audit."""
+    target_pkgs = [
+        "fastapi",
+        "uvicorn",
+        "requests",
+        "sqlalchemy",
+        "yara-python",
+        "celery",
+        "psycopg",
+        "pydantic",
+        "starlette",
+        "cryptography",
+    ]
+    packages = []
+    try:
+        import importlib.metadata
+
+        for pkg in target_pkgs:
+            try:
+                ver = importlib.metadata.version(pkg)
+                packages.append({"name": pkg, "version": ver, "ecosystem": "PyPI"})
+            except Exception:
+                pass
+    except Exception as exc:
+        logger.warning(f"Could not inspect packages via importlib.metadata: {exc}")
+
+    return {
+        "success": True,
+        "ecosystem": "PyPI",
+        "packages": packages,
+        "count": len(packages),
+        "source": "local_environment",
+    }
 
 
 @app.get("/api/v1/health")
+
 def health(db: Session = Depends(get_db)) -> dict:
     services = {"database": False, "redis": False, "worker": False, "clamav": False, "yara": False}
     try:
