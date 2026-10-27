@@ -10,7 +10,7 @@
   --violet: #9b8cff;
   --red: #ff7885;
   --green: #b8f34a;
-  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", "Noto Sans Thai", "Thonburi", sans-serif;
 }
 * { box-sizing: border-box; }
 body {

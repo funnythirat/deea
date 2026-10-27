@@ -12,8 +12,13 @@
   <div id="appShell" class="layout" hidden>
     <aside>
       <div class="brand">
-        <div class="brand-mark" aria-hidden="true">S</div>
-        <div class="brand-name">วิถีป้องกันรอบด้าน<span class="brand-sub">SECURITY WORKSPACE</span></div>
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2.8 20 6v5.3c0 4.8-3.1 8.1-8 9.9-4.9-1.8-8-5.1-8-9.9V6l8-3.2Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m8.5 12.2 2.3 2.3 4.8-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="brand-title-wrap">
+          <div class="brand-name">วิถีป้องกันรอบด้าน</div>
+          <span class="brand-sub">ENTERPRISE SOC</span>
+        </div>
       </div>
       <p class="nav-label">เมนูหลัก</p>
       <nav class="nav" aria-label="เมนูหลัก">
@@ -44,8 +49,8 @@
 
       <section class="view active" id="view-dashboard">
         <div class="hero">
-          <h2>ตรวจสุขภาพความปลอดภัยของระบบ</h2>
-          <p>ตรวจ HTTP headers แบบ passive วิเคราะห์ source code ในเครื่อง ตรวจ dependency และสแกนไฟล์ด้วย ClamAV/YARA เมื่อเปิด Backend เลือกการตรวจที่ต้องการเริ่มต้นได้เลย</p>
+          <h2>ศูนย์ควบคุมและประเมินความปลอดภัยระบบ (Enterprise Security Operations Center)</h2>
+          <p>ระบบตรวจจับและวิเคราะห์ความเสี่ยงรอบด้าน สแกนไวรัสในเครื่องจริง, ตรวจสอบสัญญาณ Wi-Fi, วิเคราะห์ซอร์สโค้ด, ตรวจ Security Headers ของเว็บไซต์ และค้นหาช่องโหว่แพ็กเกจผ่าน Google OSV แบบเรียลไทม์</p>
         </div>
         <div class="stats" aria-label="สรุปผลการตรวจ">
           <div class="stat"><div class="stat-label">จำนวนการตรวจ</div><div class="stat-value cyan" id="statScans">0</div></div>
