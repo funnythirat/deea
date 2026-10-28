@@ -685,6 +685,166 @@ function renderFindings(container, findings, emptyMessage) {
   findings.forEach((finding) => addFinding(container, finding));
 }
 
+const STORAGE_KEY = "security_workspace_state_v2";
+
+function saveStateToStorage() {
+  try {
+    const dataToSave = {
+      scans: state.scans,
+      findings: state.findings,
+      high: state.high,
+      medium: state.medium,
+      low: state.low,
+      last: state.last,
+      history: state.history.slice(0, 50)
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+  } catch (err) {
+    console.warn("ไม่สามารถบันทึกประวัติลง LocalStorage ได้:", err);
+  }
+}
+
+function calculateSecurityScore() {
+  const scoreNumber = document.getElementById("scoreNumber");
+  const scoreBadge = document.getElementById("scoreBadge");
+  const scoreCircle = document.getElementById("scoreCircle");
+  const scoreTitle = document.getElementById("scoreTitle");
+  const scoreDesc = document.getElementById("scoreDesc");
+  const printScore = document.getElementById("printScore");
+  const printStatus = document.getElementById("printStatus");
+
+  if (state.scans === 0) {
+    if (scoreNumber) scoreNumber.textContent = "100";
+    if (scoreBadge) {
+      scoreBadge.className = "score-badge safe";
+      scoreBadge.textContent = "เกรด A+ · พร้อมใช้งาน";
+    }
+    if (scoreCircle) scoreCircle.className = "score-circle";
+    if (scoreTitle) scoreTitle.textContent = "ระบบปลอดภัย ไม่พบช่องโหว่ความเสี่ยงสูง";
+    if (scoreDesc) scoreDesc.textContent = "ระบบพร้อมสำหรับการตรวจสอบความปลอดภัย เริ่มต้นสแกน Wi-Fi, ซอร์สโค้ด, ไวรัส หรือ Dependency เพื่อประเมินสถานะ";
+    if (printScore) printScore.textContent = "100 / 100 (เกรด A+)";
+    if (printStatus) printStatus.textContent = "พร้อมใช้งาน (Security Ready)";
+    return;
+  }
+
+  const penalty = (state.high * 20) + (state.medium * 8) + (state.low * 2);
+  const score = Math.max(0, Math.min(100, 100 - penalty));
+
+  let gradeText = "เกรด A+ · ปลอดภัยดีเยี่ยม";
+  let statusClass = "safe";
+  let title = "ระบบปลอดภัย ไม่พบช่องโหว่ระดับวิกฤต";
+  let desc = "ผลการตรวจสอบทั้งหมดอยู่ในเกณฑ์ปลอดภัยสูง ตรวจสอบอย่างสม่ำเสมอเพื่อรักษามาตรฐาน";
+  let statusText = "ปลอดภัยดีเยี่ยม (Secure)";
+
+  if (state.high > 0) {
+    statusClass = "danger";
+    if (score < 50) {
+      gradeText = "เกรด F · ความเสี่ยงระดับวิกฤต";
+      title = `พบช่องโหว่ความเสี่ยงสูง ${state.high} รายการ (ต้องแก้ไขด่วน)`;
+      desc = "ระบบตรวจพบมัลแวร์, ซอร์สโค้ดที่มีความเสี่ยงร้ายแรง หรือ Wi-Fi ล้าสมัย แนะนำให้แก้ไขตามข้อเสนอแนะทันที";
+      statusText = "ความเสี่ยงวิกฤต (Critical Risk)";
+    } else {
+      gradeText = "เกรด D · มีความเสี่ยงสูง";
+      title = `พบข้อบกพร่องระดับสูง ${state.high} รายการ`;
+      desc = "ตรวจพบรายการที่ต้องได้รับการแก้ไขทันทีเพื่อป้องกันการถูกโจมตี กรุณาดูคำแนะนำในรายงาน";
+      statusText = "มีความเสี่ยงสูง (High Risk)";
+    }
+  } else if (state.medium > 0) {
+    statusClass = "warning";
+    if (score < 80) {
+      gradeText = "เกรด C · ควรปรับปรุง";
+      title = `พบข้อสังเกตปานกลาง ${state.medium} รายการ`;
+      desc = "ระบบมีความปลอดภัยพื้นฐาน แต่ยังขาด Security Headers หรือพบโค้ด/แพ็กเกจที่ควรระวัง";
+      statusText = "ควรปรับปรุง (Improvement Needed)";
+    } else {
+      gradeText = "เกรด B · ปลอดภัยระดับยอมรับได้";
+      title = `พบข้อสังเกตความเสี่ยงปานกลาง ${state.medium} รายการ`;
+      desc = "โครงสร้างความปลอดภัยอยู่ในเกณฑ์ดี แนะนำให้ปรับแต่งตามข้อสังเกตเพื่อความปลอดภัยสูงสุด";
+      statusText = "ยอมรับได้ (Acceptable)";
+    }
+  } else if (state.low > 0) {
+    gradeText = "เกรด A · ความปลอดภัยดี";
+    statusClass = "safe";
+    title = `ระบบปลอดภัย พบข้อสังเกตระดับต่ำ ${state.low} รายการ`;
+    desc = "ไม่มีช่องโหว่ที่เป็นอันตรายโดยตรง รายการที่พบเป็นข้อแนะนำเพื่อการปรับแต่งให้รัดกุมยิ่งขึ้น";
+    statusText = "ความปลอดภัยดี (Good)";
+  }
+
+  if (scoreNumber) scoreNumber.textContent = String(score);
+  if (scoreBadge) {
+    scoreBadge.className = `score-badge ${statusClass}`;
+    scoreBadge.textContent = gradeText;
+  }
+  if (scoreCircle) {
+    scoreCircle.className = `score-circle ${statusClass === "safe" ? "" : statusClass}`.trim();
+  }
+  if (scoreTitle) scoreTitle.textContent = title;
+  if (scoreDesc) scoreDesc.textContent = desc;
+  if (printScore) printScore.textContent = `${score} / 100 (${gradeText})`;
+  if (printStatus) printStatus.textContent = statusText;
+}
+
+function loadStateFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      calculateSecurityScore();
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      state.scans = Number(parsed.scans) || 0;
+      state.findings = Number(parsed.findings) || 0;
+      state.high = Number(parsed.high) || 0;
+      state.medium = Number(parsed.medium) || 0;
+      state.low = Number(parsed.low) || 0;
+      state.last = parsed.last || null;
+      state.history = Array.isArray(parsed.history) ? parsed.history : [];
+
+      const statScans = document.getElementById("statScans");
+      const statFindings = document.getElementById("statFindings");
+      const statHigh = document.getElementById("statHigh");
+      const statLast = document.getElementById("statLast");
+      if (statScans) statScans.textContent = String(state.scans);
+      if (statFindings) statFindings.textContent = String(state.findings);
+      if (statHigh) statHigh.textContent = String(state.high);
+      if (statLast && state.last && state.last.completedAt) {
+        statLast.textContent = new Date(state.last.completedAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+      }
+
+      const countHigh = document.getElementById("countHigh");
+      const countMedium = document.getElementById("countMedium");
+      const countLow = document.getElementById("countLow");
+      const barHigh = document.getElementById("barHigh");
+      const barMedium = document.getElementById("barMedium");
+      const barLow = document.getElementById("barLow");
+      if (countHigh) countHigh.textContent = String(state.high);
+      if (countMedium) countMedium.textContent = String(state.medium);
+      if (countLow) countLow.textContent = String(state.low);
+      const maxSeverity = Math.max(state.high, state.medium, state.low, 1);
+      if (barHigh) barHigh.style.width = (state.high / maxSeverity * 100) + "%";
+      if (barMedium) barMedium.style.width = (state.medium / maxSeverity * 100) + "%";
+      if (barLow) barLow.style.width = (state.low / maxSeverity * 100) + "%";
+
+      if (state.last && state.last.findings) {
+        const latestResults = document.getElementById("latestResults");
+        const reportResults = document.getElementById("reportResults");
+        if (latestResults) renderFindings(latestResults, state.last.findings);
+        if (reportResults) renderFindings(reportResults, state.last.findings);
+        const reportLastTag = document.getElementById("reportLastKindTag");
+        if (reportLastTag && state.last.kind) {
+          reportLastTag.textContent = `${titles[state.last.kind] || state.last.kind}: ${(state.last.target || "").slice(0, 25)}`;
+        }
+      }
+      renderHistory();
+      calculateSecurityScore();
+    }
+  } catch (err) {
+    console.warn("ไม่สามารถโหลดประวัติจาก LocalStorage ได้:", err);
+    calculateSecurityScore();
+  }
+}
+
 function finishScan(kind, findings, target) {
   const flagged = findings.filter((item) => item.level === "high" || item.level === "medium" || item.level === "low");
   state.scans += 1;
@@ -706,7 +866,7 @@ function finishScan(kind, findings, target) {
     }))
   };
   state.history.unshift(state.last);
-  state.history = state.history.slice(0, 25);
+  state.history = state.history.slice(0, 50);
   document.getElementById("statScans").textContent = String(state.scans);
   document.getElementById("statFindings").textContent = String(state.findings);
   document.getElementById("statHigh").textContent = String(state.high);
@@ -720,7 +880,11 @@ function finishScan(kind, findings, target) {
   document.getElementById("barLow").style.width = (state.low / maxSeverity * 100) + "%";
   renderFindings(document.getElementById("latestResults"), findings);
   renderFindings(document.getElementById("reportResults"), findings);
+  const reportLastTag = document.getElementById("reportLastKindTag");
+  if (reportLastTag) reportLastTag.textContent = `${titles[kind] || kind}: ${target.length > 25 ? target.slice(0, 22) + "..." : target}`;
   renderHistory();
+  calculateSecurityScore();
+  saveStateToStorage();
 }
 
 function updateServiceStatus(id, ready, label) {
@@ -893,58 +1057,248 @@ function exportReport() {
   URL.revokeObjectURL(url);
 }
 
-function renderHistory() {
+let currentHistoryFilter = "all";
+let currentSearchQuery = "";
+
+function renderHistory(filterType = currentHistoryFilter, searchQuery = currentSearchQuery) {
+  currentHistoryFilter = filterType;
+  currentSearchQuery = searchQuery;
+
+  const countAll = state.history.length;
+  const countHigh = state.history.filter((s) => s.findings && s.findings.some((f) => f.level === "high")).length;
+  const countMedium = state.history.filter((s) => s.findings && !s.findings.some((f) => f.level === "high") && s.findings.some((f) => f.level === "medium")).length;
+  const countClean = state.history.filter((s) => !s.findings || !s.findings.some((f) => f.level === "high" || f.level === "medium")).length;
+
+  const fCountAll = document.getElementById("filterCountAll");
+  const fCountHigh = document.getElementById("filterCountHigh");
+  const fCountMed = document.getElementById("filterCountMedium");
+  const fCountClean = document.getElementById("filterCountClean");
+  if (fCountAll) fCountAll.textContent = String(countAll);
+  if (fCountHigh) fCountHigh.textContent = String(countHigh);
+  if (fCountMed) fCountMed.textContent = String(countMedium);
+  if (fCountClean) fCountClean.textContent = String(countClean);
+
   const container = document.getElementById("historyTable");
+  if (!container) return;
   container.replaceChildren();
+
   if (state.history.length === 0) {
     container.className = "empty";
-    container.textContent = "ยังไม่มีประวัติการตรวจ";
+    container.textContent = "ยังไม่มีประวัติการตรวจ (ข้อมูลจะบันทึกลงเครื่องอัตโนมัติเมื่อทำการสแกน)";
     return;
   }
+
+  let filtered = state.history;
+  if (filterType === "high") {
+    filtered = filtered.filter((s) => s.findings && s.findings.some((f) => f.level === "high"));
+  } else if (filterType === "medium") {
+    filtered = filtered.filter((s) => s.findings && !s.findings.some((f) => f.level === "high") && s.findings.some((f) => f.level === "medium"));
+  } else if (filterType === "clean") {
+    filtered = filtered.filter((s) => !s.findings || !s.findings.some((f) => f.level === "high" || f.level === "medium"));
+  }
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter((s) => {
+      const matchKind = (s.kind || "").toLowerCase().includes(q) || (titles[s.kind] || "").toLowerCase().includes(q);
+      const matchTarget = (s.target || "").toLowerCase().includes(q);
+      const matchFindings = (s.findings || []).some((f) => (f.title || "").toLowerCase().includes(q) || (f.detail || "").toLowerCase().includes(q));
+      return matchKind || matchTarget || matchFindings;
+    });
+  }
+
+  if (filtered.length === 0) {
+    container.className = "empty";
+    container.textContent = "ไม่พบประวัติการตรวจที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรอง";
+    return;
+  }
+
   container.className = "table-wrap";
   const table = document.createElement("table");
   const head = document.createElement("thead");
   const headerRow = document.createElement("tr");
-  ["ชนิดการตรวจ", "เป้าหมาย", "รายการ", "เวลา", "รายงาน"].forEach((label) => {
+  ["ชนิดการตรวจ", "เป้าหมาย", "สถานะความเสี่ยง", "พบข้อสังเกต", "เวลาที่ตรวจ", "รายงาน"].forEach((label) => {
     const cell = document.createElement("th");
     cell.textContent = label;
     headerRow.append(cell);
   });
   head.append(headerRow);
   const body = document.createElement("tbody");
-  state.history.forEach((scan, index) => {
+
+  filtered.forEach((scan) => {
     const row = document.createElement("tr");
-    const flagged = scan.findings.filter((item) => ["high", "medium", "low"].includes(item.level)).length;
-    const values = [
-      scan.kind,
-      scan.target.length > 38 ? scan.target.slice(0, 35) + "..." : scan.target,
-      String(flagged),
-      new Date(scan.completedAt).toLocaleString("th-TH")
-    ];
-    values.forEach((value) => {
-      const cell = document.createElement("td");
-      cell.textContent = value;
-      row.append(cell);
-    });
+    const flagged = (scan.findings || []).filter((item) => ["high", "medium", "low"].includes(item.level)).length;
+    const highCnt = (scan.findings || []).filter((item) => item.level === "high").length;
+    const medCnt = (scan.findings || []).filter((item) => item.level === "medium").length;
+    const lowCnt = (scan.findings || []).filter((item) => item.level === "low").length;
+
+    const cellKind = document.createElement("td");
+    cellKind.textContent = titles[scan.kind] || scan.kind;
+    row.append(cellKind);
+
+    const cellTarget = document.createElement("td");
+    cellTarget.textContent = scan.target.length > 38 ? scan.target.slice(0, 35) + "..." : scan.target;
+    row.append(cellTarget);
+
+    const cellRisk = document.createElement("td");
+    const riskBadge = document.createElement("span");
+    if (highCnt > 0) {
+      riskBadge.className = "badge danger";
+      riskBadge.textContent = `🚨 เสี่ยงสูง (${highCnt})`;
+    } else if (medCnt > 0) {
+      riskBadge.className = "badge warning";
+      riskBadge.textContent = `⚠️ ปานกลาง (${medCnt})`;
+    } else if (lowCnt > 0) {
+      riskBadge.className = "badge info";
+      riskBadge.textContent = `ℹ️ ต่ำ (${lowCnt})`;
+    } else {
+      riskBadge.className = "badge safe";
+      riskBadge.textContent = "✅ ปลอดภัย";
+    }
+    cellRisk.append(riskBadge);
+    row.append(cellRisk);
+
+    const cellCount = document.createElement("td");
+    cellCount.textContent = String(flagged) + " รายการ";
+    row.append(cellCount);
+
+    const cellTime = document.createElement("td");
+    cellTime.textContent = new Date(scan.completedAt).toLocaleString("th-TH");
+    row.append(cellTime);
+
     const actionCell = document.createElement("td");
     const button = document.createElement("button");
     button.type = "button";
     button.className = "btn secondary";
-    button.textContent = "ดูผล";
+    button.textContent = "ดูผลรายงาน";
     button.addEventListener("click", () => {
       state.last = scan;
       renderFindings(document.getElementById("reportResults"), scan.findings);
+      const tag = document.getElementById("reportLastKindTag");
+      if (tag) tag.textContent = `${titles[scan.kind] || scan.kind}: ${scan.target.length > 25 ? scan.target.slice(0, 22) + "..." : scan.target}`;
+      document.getElementById("reportResults")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     actionCell.append(button);
     row.append(actionCell);
+
     body.append(row);
   });
+
   table.append(head, body);
   container.append(table);
 }
 
+function printSecurityReport() {
+  const printDate = document.getElementById("printDate");
+  if (printDate) {
+    printDate.textContent = new Date().toLocaleString("th-TH", {
+      dateStyle: "long",
+      timeStyle: "medium"
+    });
+  }
+  calculateSecurityScore();
+  const reportsViewBtn = document.querySelector('[data-view="reports"]');
+  if (reportsViewBtn && !document.getElementById("view-reports")?.classList.contains("active")) {
+    reportsViewBtn.click();
+  }
+  window.print();
+}
+
+function clearAllHistory() {
+  if (!confirm("คุณต้องการล้างประวัติการตรวจสอบความปลอดภัยทั้งหมดที่บันทึกไว้ในเครื่องใช่หรือไม่?")) {
+    return;
+  }
+  state.scans = 0;
+  state.findings = 0;
+  state.high = 0;
+  state.medium = 0;
+  state.low = 0;
+  state.last = null;
+  state.history = [];
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (err) {
+    console.warn("ไม่สามารถล้าง LocalStorage ได้:", err);
+  }
+
+  const statScans = document.getElementById("statScans");
+  const statFindings = document.getElementById("statFindings");
+  const statHigh = document.getElementById("statHigh");
+  const statLast = document.getElementById("statLast");
+  if (statScans) statScans.textContent = "0";
+  if (statFindings) statFindings.textContent = "0";
+  if (statHigh) statHigh.textContent = "0";
+  if (statLast) statLast.textContent = "-";
+
+  const countHigh = document.getElementById("countHigh");
+  const countMedium = document.getElementById("countMedium");
+  const countLow = document.getElementById("countLow");
+  const barHigh = document.getElementById("barHigh");
+  const barMedium = document.getElementById("barMedium");
+  const barLow = document.getElementById("barLow");
+  if (countHigh) countHigh.textContent = "0";
+  if (countMedium) countMedium.textContent = "0";
+  if (countLow) countLow.textContent = "0";
+  if (barHigh) barHigh.style.width = "0%";
+  if (barMedium) barMedium.style.width = "0%";
+  if (barLow) barLow.style.width = "0%";
+
+  const latestResults = document.getElementById("latestResults");
+  if (latestResults) {
+    latestResults.replaceChildren();
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "ยังไม่มีผลการตรวจล่าสุด";
+    latestResults.append(empty);
+  }
+
+  const reportResults = document.getElementById("reportResults");
+  if (reportResults) {
+    reportResults.replaceChildren();
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "เลือกตรวจจากเมนูด้านซ้ายเพื่อสร้างรายงาน";
+    reportResults.append(empty);
+  }
+
+  const reportLastTag = document.getElementById("reportLastKindTag");
+  if (reportLastTag) reportLastTag.textContent = "ล่าสุด";
+
+  renderHistory();
+  calculateSecurityScore();
+}
+
 document.getElementById("exportButton").addEventListener("click", exportReport);
 document.getElementById("exportHistoryButton").addEventListener("click", exportReport);
+
+const btnPrintReport = document.getElementById("btnPrintReport");
+if (btnPrintReport) btnPrintReport.addEventListener("click", printSecurityReport);
+
+const btnScoreQuickPrint = document.getElementById("btnScoreQuickPrint");
+if (btnScoreQuickPrint) btnScoreQuickPrint.addEventListener("click", printSecurityReport);
+
+const btnClearHistory = document.getElementById("btnClearHistory");
+if (btnClearHistory) btnClearHistory.addEventListener("click", clearAllHistory);
+
+const reportSearchInput = document.getElementById("reportSearchInput");
+if (reportSearchInput) {
+  reportSearchInput.addEventListener("input", (e) => {
+    renderHistory(currentHistoryFilter, e.target.value.trim());
+  });
+}
+
+document.querySelectorAll(".filter-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const filter = btn.dataset.filter || "all";
+    const searchVal = document.getElementById("reportSearchInput")?.value.trim() || "";
+    renderHistory(filter, searchVal);
+  });
+});
+
+// Load persistent data from LocalStorage on startup
+loadStateFromStorage();
 
 document.getElementById("websiteForm").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1707,6 +2061,20 @@ if (btnStartSys) {
             if (stData.status !== "scanning") {
               clearInterval(sysScanPollTimer);
               sysScanPollTimer = null;
+              if (stData.status === "completed") {
+                const threats = stData.threats || [];
+                const findings = threats.length > 0 ? threats.map((t) => ({
+                  title: `${t.threat_name || "Malware"} (${t.filename || "file"})`,
+                  detail: `${t.path || "-"}: ${t.detail || "ตรวจพบมัลแวร์บนระบบ"}`,
+                  level: t.level || "high",
+                  recommendation: t.recommendation || "แนะนำให้กักกันหรือลบไฟล์นี้ทันที"
+                })) : [{
+                  title: "ไม่พบภัยคุกคามในระบบ",
+                  detail: `สแกนไฟล์ ${stData.files_scanned || 0} ไฟล์ ใน ${stData.directories_scanned || 0} โฟลเดอร์ ไม่พบมัลแวร์`,
+                  level: "info"
+                }];
+                finishScan("virus", findings, stData.target || "Local System");
+              }
             }
           }
         } catch {
@@ -1804,6 +2172,17 @@ function runSysScanDemo() {
       sysScanPollTimer = null;
       if (startBtn) startBtn.disabled = false;
       if (stopBtn) stopBtn.disabled = true;
+      const findings = demoThreats.length > 0 ? demoThreats.map((t) => ({
+        title: `${t.threat_name} (${t.filename})`,
+        detail: `${t.path}: ${t.detail}`,
+        level: t.level || "high",
+        recommendation: t.recommendation
+      })) : [{
+        title: "ไม่พบภัยคุกคามในระบบ",
+        detail: "สแกนจำลองสำเร็จ ไม่พบมัลแวร์",
+        level: "info"
+      }];
+      finishScan("virus", findings, "C:\\Users\\User (จำลอง)");
     }
   }, 350);
 }

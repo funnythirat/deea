@@ -52,6 +52,34 @@
           <h2>ศูนย์ควบคุมและประเมินความปลอดภัยระบบ (Enterprise Security Operations Center)</h2>
           <p>ระบบตรวจจับและวิเคราะห์ความเสี่ยงรอบด้าน สแกนไวรัสในเครื่องจริง, ตรวจสอบสัญญาณ Wi-Fi, วิเคราะห์ซอร์สโค้ด, ตรวจ Security Headers ของเว็บไซต์ และค้นหาช่องโหว่แพ็กเกจผ่าน Google OSV แบบเรียลไทม์</p>
         </div>
+
+        <!-- Security Health Scorecard Widget -->
+        <div class="card score-card mb-14" id="securityScoreCard">
+          <div class="score-card-inner">
+            <div class="score-circle-wrap">
+              <div class="score-circle" id="scoreCircle">
+                <span class="score-number" id="scoreNumber">100</span>
+                <span class="score-label">คะแนนความปลอดภัย</span>
+              </div>
+            </div>
+            <div class="score-content">
+              <div class="score-header-row">
+                <div>
+                  <span class="score-badge safe" id="scoreBadge">เกรด A+ · ปลอดภัยดีเยี่ยม</span>
+                  <h3 class="score-title" id="scoreTitle">ระบบปลอดภัย ไม่พบช่องโหว่ระดับวิกฤต</h3>
+                </div>
+                <button class="btn secondary" type="button" id="btnScoreQuickPrint">🖨️ พิมพ์รายงานสรุป</button>
+              </div>
+              <p class="score-desc" id="scoreDesc">คะแนนคำนวณจากผลการตรวจสอบทั้งหมดในระบบ (ไวรัส, Wi-Fi, ซอร์สโค้ด, เว็บไซต์, Dependency) ตรวจสม่ำเสมอเพื่อคงระดับความปลอดภัยสูงสุด</p>
+              <div class="score-tags" id="scoreTags">
+                <span class="score-tag">🛡️ Real-time Analysis</span>
+                <span class="score-tag">💾 บันทึกประวัติอัตโนมัติ</span>
+                <span class="score-tag">📋 มาตรฐานสากล</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="stats" aria-label="สรุปผลการตรวจ">
           <div class="stat"><div class="stat-label">จำนวนการตรวจ</div><div class="stat-value cyan" id="statScans">0</div></div>
           <div class="stat"><div class="stat-label">พบรายการที่ควรตรวจสอบ</div><div class="stat-value yellow" id="statFindings">0</div></div>
@@ -142,15 +170,71 @@
       </section>
 
       <section class="view" id="view-reports">
+        <!-- Print Header (Visible only when printing) -->
+        <div class="print-only print-header">
+          <div class="print-brand">
+            <div class="print-title">วิถีป้องกันรอบด้าน · รายงานการตรวจสอบความปลอดภัยของระบบ</div>
+            <div class="print-sub">EXECUTIVE SYSTEM SECURITY AUDIT REPORT</div>
+          </div>
+          <div class="print-meta">
+            <div><strong>วันที่ออกรายงาน:</strong> <span id="printDate">-</span></div>
+            <div><strong>สถานะระบบ:</strong> <span id="printStatus">ปลอดภัย (Security Ready)</span></div>
+            <div><strong>คะแนนความปลอดภัย:</strong> <span id="printScore">100 / 100</span></div>
+          </div>
+        </div>
+
         <div class="card">
-          <div class="result-head"><div><h2>ประวัติและรายงาน</h2><p class="sub sub-tight">รายการตรวจในแท็บนี้เท่านั้น ไม่ได้บันทึกลงฐานข้อมูล</p></div><button class="btn secondary" type="button" id="exportHistoryButton">ส่งออกผลล่าสุด</button></div>
+          <div class="result-head">
+            <div>
+              <h2>ประวัติและรายงานการตรวจสอบความปลอดภัย</h2>
+              <p class="sub sub-tight">บันทึกประวัติการตรวจในเครื่องอัตโนมัติ (Persistent LocalStorage) รีเฟรชเว็บแล้วข้อมูลไม่หาย</p>
+            </div>
+            <div class="header-actions">
+              <button class="btn" type="button" id="btnPrintReport">🖨️ พิมพ์รายงาน / บันทึก PDF</button>
+              <button class="btn secondary" type="button" id="exportHistoryButton">ส่งออก JSON</button>
+              <button class="btn danger" type="button" id="btnClearHistory">🗑️ ล้างประวัติ</button>
+            </div>
+          </div>
+
+          <!-- Report Search & Filter Controls -->
+          <div class="report-controls mt-14 mb-14">
+            <div class="report-search-wrap">
+              <input type="text" id="reportSearchInput" placeholder="🔍 ค้นหาในประวัติ เช่น Wi-Fi, express, lodash, เว็บไซต์...">
+            </div>
+            <div class="report-filters">
+              <button type="button" class="filter-btn active" data-filter="all" id="filterAllBtn">ทั้งหมด (<span id="filterCountAll">0</span>)</button>
+              <button type="button" class="filter-btn filter-high" data-filter="high" id="filterHighBtn">เสี่ยงสูง (<span id="filterCountHigh">0</span>)</button>
+              <button type="button" class="filter-btn filter-medium" data-filter="medium" id="filterMediumBtn">เสี่ยงปานกลาง (<span id="filterCountMedium">0</span>)</button>
+              <button type="button" class="filter-btn filter-clean" data-filter="clean" id="filterCleanBtn">ปลอดภัย (<span id="filterCountClean">0</span>)</button>
+            </div>
+          </div>
+
           <div id="historyTable" class="empty">ยังไม่มีประวัติการตรวจ</div>
         </div>
+
         <div class="card mt-14">
-          <h2>รายละเอียดผลล่าสุด</h2>
+          <div class="result-head">
+            <h2>รายละเอียดผลการตรวจล่าสุด</h2>
+            <span class="tag" id="reportLastKindTag">ล่าสุด</span>
+          </div>
           <div id="reportResults" class="results"><div class="empty">เลือกตรวจจากเมนูด้านซ้ายเพื่อสร้างรายงาน</div></div>
         </div>
+
+        <!-- Print Sign-off (Visible only when printing) -->
+        <div class="print-only print-signoff">
+          <div class="signoff-box">
+            <div class="signoff-line"></div>
+            <div class="signoff-name">ผู้จัดทำรายงาน / ผู้ตรวจสอบ</div>
+            <div class="signoff-title">Security Workspace Analyst</div>
+          </div>
+          <div class="signoff-box">
+            <div class="signoff-line"></div>
+            <div class="signoff-name">อาจารย์ที่ปรึกษา / ผู้รับรองรายงาน</div>
+            <div class="signoff-title">โครงงานคอมพิวเตอร์และความปลอดภัยไซเบอร์</div>
+          </div>
+        </div>
       </section>
+
 
       <section class="view" id="view-engines">
         <div class="card">
