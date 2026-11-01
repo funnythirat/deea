@@ -20,37 +20,46 @@
           <span class="brand-sub">ENTERPRISE SOC</span>
         </div>
       </div>
-      <p class="nav-label">เมนูหลัก</p>
+      <p class="nav-label" data-i18n="nav.main">เมนูหลัก</p>
       <nav class="nav" aria-label="เมนูหลัก">
-        <button type="button" data-view="dashboard" aria-current="page"><span class="nav-icon">▦</span>ภาพรวม</button>
-        <button type="button" data-view="queue"><span class="nav-icon">⇄</span>คิวงาน</button>
-        <button type="button" data-view="reports"><span class="nav-icon">▤</span>รายงาน</button>
-        <button type="button" data-view="engines"><span class="nav-icon">◇</span>Scanner Engines</button>
-        <button type="button" data-view="virus"><span class="nav-icon scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3M7 7h10v10H7z"/><path class="scan-icon-line" d="M5 12h14"/></svg></span>สแกนไวรัส</button>
-        <button type="button" data-view="website"><span class="nav-icon">⌕</span>ตรวจเว็บไซต์</button>
-        <button type="button" data-view="code"><span class="nav-icon">⌘</span>ตรวจโค้ด</button>
-        <button type="button" data-view="dependencies"><span class="nav-icon">◇</span>ตรวจแพ็กเกจ</button>
-        <button type="button" data-view="wifi"><span class="nav-icon">⌁</span>ตรวจ Wi-Fi</button>
+        <button type="button" data-view="dashboard" aria-current="page"><span class="nav-icon">▦</span><span data-i18n="nav.dashboard">ภาพรวม</span></button>
+        <button type="button" data-view="queue"><span class="nav-icon">⇄</span><span data-i18n="nav.queue">คิวงาน</span></button>
+        <button type="button" data-view="reports"><span class="nav-icon">▤</span><span data-i18n="nav.reports">รายงาน</span></button>
+        <button type="button" data-view="engines"><span class="nav-icon">◇</span><span data-i18n="nav.engines">Scanner Engines</span></button>
+        <button type="button" data-view="virus"><span class="nav-icon scan-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3M7 7h10v10H7z"/><path class="scan-icon-line" d="M5 12h14"/></svg></span><span data-i18n="nav.virus">สแกนไวรัส</span></button>
+        <button type="button" data-view="website"><span class="nav-icon">⌕</span><span data-i18n="nav.website">ตรวจเว็บไซต์</span></button>
+        <button type="button" data-view="code"><span class="nav-icon">⌘</span><span data-i18n="nav.code">ตรวจโค้ด</span></button>
+        <button type="button" data-view="dependencies"><span class="nav-icon">◇</span><span data-i18n="nav.dependencies">ตรวจแพ็กเกจ</span></button>
+        <button type="button" data-view="wifi"><span class="nav-icon">⌁</span><span data-i18n="nav.wifi">ตรวจ Wi-Fi</span></button>
       </nav>
       <div class="side-note">
-        <strong>ใช้กับระบบที่ได้รับอนุญาตเท่านั้น</strong>
-        สแกนเฉพาะไฟล์ที่คุณเลือกอัปโหลด ไฟล์จะถูกกักไว้ชั่วคราวและไม่ถูกรันโดยระบบ
+        <strong data-i18n="nav.sideNoteTitle">ใช้กับระบบที่ได้รับอนุญาตเท่านั้น</strong>
+        <span data-i18n="nav.sideNoteDesc">สแกนเฉพาะไฟล์ที่คุณเลือกอัปโหลด ไฟล์จะถูกกักไว้ชั่วคราวและไม่ถูกรันโดยระบบ</span>
       </div>
     </aside>
 
     <main>
       <header class="topbar">
-        <div><div class="eyebrow">SECURITY OVERVIEW</div><h1 id="pageTitle">ภาพรวมความปลอดภัย</h1></div>
+        <div><div class="eyebrow" data-i18n="topbar.eyebrow">SECURITY OVERVIEW</div><h1 id="pageTitle">ภาพรวมความปลอดภัย</h1></div>
         <div class="header-actions">
-          <div class="status-pill"><span class="status-dot ready" id="backendStatusDot"></span><span id="backendStatusText">ระบบพร้อมใช้งาน (Security Workspace · Ready)</span></div>
-          <button class="btn secondary" id="signOutButton" type="button">ออกจากระบบ</button>
+          <div class="lang-switcher-wrap">
+            <select id="langSwitcher" class="lang-select" aria-label="เลือกภาษา / Select Language">
+              <option value="th">🇹🇭 ภาษาไทย</option>
+              <option value="en">🇬🇧 English</option>
+              <option value="zh">🇨🇳 简体中文</option>
+              <option value="ja">🇯🇵 日本語</option>
+              <option value="es">🇪🇸 Español</option>
+            </select>
+          </div>
+          <div class="status-pill"><span class="status-dot ready" id="backendStatusDot"></span><span id="backendStatusText" data-i18n="topbar.ready">ระบบพร้อมใช้งาน (Security Workspace · Ready)</span></div>
+          <button class="btn secondary" id="signOutButton" type="button" data-i18n="topbar.logout">ออกจากระบบ</button>
         </div>
       </header>
 
       <section class="view active" id="view-dashboard">
         <div class="hero">
-          <h2>ศูนย์ควบคุมและประเมินความปลอดภัยระบบ (Enterprise Security Operations Center)</h2>
-          <p>ระบบตรวจจับและวิเคราะห์ความเสี่ยงรอบด้าน สแกนไวรัสในเครื่องจริง, ตรวจสอบสัญญาณ Wi-Fi, วิเคราะห์ซอร์สโค้ด, ตรวจ Security Headers ของเว็บไซต์ และค้นหาช่องโหว่แพ็กเกจผ่าน Google OSV แบบเรียลไทม์</p>
+          <h2 data-i18n="hero.title">ศูนย์ควบคุมและประเมินความปลอดภัยระบบ (Enterprise Security Operations Center)</h2>
+          <p data-i18n="hero.desc">ระบบตรวจจับและวิเคราะห์ความเสี่ยงรอบด้าน สแกนไวรัสในเครื่องจริง, ตรวจสอบสัญญาณ Wi-Fi, วิเคราะห์ซอร์สโค้ด, ตรวจ Security Headers ของเว็บไซต์ และค้นหาช่องโหว่แพ็กเกจผ่าน Google OSV แบบเรียลไทม์</p>
         </div>
 
         <!-- Security Health Scorecard Widget -->
@@ -59,7 +68,7 @@
             <div class="score-circle-wrap">
               <div class="score-circle" id="scoreCircle">
                 <span class="score-number" id="scoreNumber">100</span>
-                <span class="score-label">คะแนนความปลอดภัย</span>
+                <span class="score-label" data-i18n="score.label">คะแนนความปลอดภัย</span>
               </div>
             </div>
             <div class="score-content">
@@ -68,26 +77,26 @@
                   <span class="score-badge safe" id="scoreBadge">เกรด A+ · ปลอดภัยดีเยี่ยม</span>
                   <h3 class="score-title" id="scoreTitle">ระบบปลอดภัย ไม่พบช่องโหว่ระดับวิกฤต</h3>
                 </div>
-                <button class="btn secondary" type="button" id="btnScoreQuickPrint">🖨️ พิมพ์รายงานสรุป</button>
+                <button class="btn secondary" type="button" id="btnScoreQuickPrint" data-i18n="score.quickPrint">🖨️ พิมพ์รายงานสรุป</button>
               </div>
               <p class="score-desc" id="scoreDesc">คะแนนคำนวณจากผลการตรวจสอบทั้งหมดในระบบ (ไวรัส, Wi-Fi, ซอร์สโค้ด, เว็บไซต์, Dependency) ตรวจสม่ำเสมอเพื่อคงระดับความปลอดภัยสูงสุด</p>
               <div class="score-tags" id="scoreTags">
-                <span class="score-tag">🛡️ Real-time Analysis</span>
-                <span class="score-tag">💾 บันทึกประวัติอัตโนมัติ</span>
-                <span class="score-tag">📋 มาตรฐานสากล</span>
+                <span class="score-tag" data-i18n="score.tag.realtime">🛡️ Real-time Analysis</span>
+                <span class="score-tag" data-i18n="score.tag.persistent">💾 บันทึกประวัติอัตโนมัติ</span>
+                <span class="score-tag" data-i18n="score.tag.standards">📋 มาตรฐานสากล</span>
               </div>
             </div>
           </div>
         </div>
 
         <div class="stats" aria-label="สรุปผลการตรวจ">
-          <div class="stat"><div class="stat-label">จำนวนการตรวจ</div><div class="stat-value cyan" id="statScans">0</div></div>
-          <div class="stat"><div class="stat-label">พบรายการที่ควรตรวจสอบ</div><div class="stat-value yellow" id="statFindings">0</div></div>
-          <div class="stat"><div class="stat-label">ความเสี่ยงสูง</div><div class="stat-value red" id="statHigh">0</div></div>
-          <div class="stat"><div class="stat-label">รายงานล่าสุด</div><div class="stat-value" id="statLast">ยังไม่มี</div></div>
+          <div class="stat"><div class="stat-label" data-i18n="stat.scans">จำนวนการตรวจ</div><div class="stat-value cyan" id="statScans">0</div></div>
+          <div class="stat"><div class="stat-label" data-i18n="stat.findings">พบรายการที่ควรตรวจสอบ</div><div class="stat-value yellow" id="statFindings">0</div></div>
+          <div class="stat"><div class="stat-label" data-i18n="stat.high">ความเสี่ยงสูง</div><div class="stat-value red" id="statHigh">0</div></div>
+          <div class="stat"><div class="stat-label" data-i18n="stat.last">รายงานล่าสุด</div><div class="stat-value" id="statLast">ยังไม่มี</div></div>
         </div>
         <div class="card mb-14">
-          <h2>ระดับความรุนแรงสะสม</h2>
+          <h2 data-i18n="sev.title">ระดับความรุนแรงสะสม</h2>
           <p class="sub">นับจากผลการตรวจในแท็บนี้เท่านั้น</p>
           <div class="severity-row"><span>High</span><div class="severity-track"><div id="barHigh" class="severity-fill high"></div></div><strong id="countHigh">0</strong></div>
           <div class="severity-row"><span>Medium</span><div class="severity-track"><div id="barMedium" class="severity-fill medium"></div></div><strong id="countMedium">0</strong></div>
@@ -95,8 +104,8 @@
         </div>
         <div class="grid-two">
           <div class="card">
-            <h2>เริ่มการตรวจ</h2>
-            <p class="sub">เลือกชนิดการตรวจให้เหมาะกับสิ่งที่ต้องการประเมิน</p>
+            <h2 data-i18n="quick.title">เริ่มการตรวจ</h2>
+            <p class="sub" data-i18n="quick.sub">เลือกชนิดการตรวจให้เหมาะกับสิ่งที่ต้องการประเมิน</p>
             <div class="quick-actions">
               <button class="action" type="button" data-go="website"><span>⌕</span><strong>เว็บไซต์</strong><small>ตรวจ HTTP security headers</small></button>
               <button class="action" type="button" data-go="code"><span>⌘</span><strong>ซอร์สโค้ด</strong><small>วิเคราะห์ไฟล์ในเครื่อง</small></button>
@@ -186,20 +195,20 @@
         <div class="card">
           <div class="result-head">
             <div>
-              <h2>ประวัติและรายงานการตรวจสอบความปลอดภัย</h2>
-              <p class="sub sub-tight">บันทึกประวัติการตรวจในเครื่องอัตโนมัติ (Persistent LocalStorage) รีเฟรชเว็บแล้วข้อมูลไม่หาย</p>
+              <h2 data-i18n="report.title">ประวัติและรายงานการตรวจสอบความปลอดภัย</h2>
+              <p class="sub sub-tight" data-i18n="report.sub">บันทึกประวัติการตรวจในเครื่องอัตโนมัติ (Persistent LocalStorage) รีเฟรชเว็บแล้วข้อมูลไม่หาย</p>
             </div>
             <div class="header-actions">
-              <button class="btn" type="button" id="btnPrintReport">🖨️ พิมพ์รายงาน / บันทึก PDF</button>
-              <button class="btn secondary" type="button" id="exportHistoryButton">ส่งออก JSON</button>
-              <button class="btn danger" type="button" id="btnClearHistory">🗑️ ล้างประวัติ</button>
+              <button class="btn" type="button" id="btnPrintReport" data-i18n="report.printBtn">🖨️ พิมพ์รายงาน / บันทึก PDF</button>
+              <button class="btn secondary" type="button" id="exportHistoryButton" data-i18n="report.exportBtn">ส่งออก JSON</button>
+              <button class="btn danger" type="button" id="btnClearHistory" data-i18n="report.clearBtn">🗑️ ล้างประวัติ</button>
             </div>
           </div>
 
           <!-- Report Search & Filter Controls -->
           <div class="report-controls mt-14 mb-14">
             <div class="report-search-wrap">
-              <input type="text" id="reportSearchInput" placeholder="🔍 ค้นหาในประวัติ เช่น Wi-Fi, express, lodash, เว็บไซต์...">
+              <input type="text" id="reportSearchInput" placeholder="🔍 ค้นหาในประวัติ เช่น Wi-Fi, express, lodash, เว็บไซต์..." data-i18n-placeholder="report.searchPlaceholder">
             </div>
             <div class="report-filters">
               <button type="button" class="filter-btn active" data-filter="all" id="filterAllBtn">ทั้งหมด (<span id="filterCountAll">0</span>)</button>
@@ -254,15 +263,15 @@
 
       <section class="view" id="view-website">
         <div class="card">
-          <h2>ตรวจการตั้งค่าเว็บไซต์</h2>
-          <p class="sub">ส่ง HTTP HEAD request เพียงครั้งเดียวจาก browser เพื่อตรวจ security headers ที่อ่านได้ ไม่มีการ crawl หรือทดสอบช่องโหว่เชิงโจมตี</p>
+          <h2 data-i18n="web.title">ตรวจการตั้งค่าเว็บไซต์</h2>
+          <p class="sub" data-i18n="web.sub">ส่ง HTTP HEAD request เพียงครั้งเดียวจาก browser เพื่อตรวจ security headers ที่อ่านได้ ไม่มีการ crawl หรือทดสอบช่องโหว่เชิงโจมตี</p>
           <div class="callout">ใช้ได้เฉพาะเว็บไซต์ที่คุณเป็นเจ้าของหรือได้รับอนุญาต เมื่อเชื่อมต่อ Backend จะตรวจผ่าน Backend ซึ่งไม่ติด CORS; หากเปิดจาก GitHub Pages โดยไม่มี Backend browser อาจปฏิเสธการอ่านผลหากเว็บไซต์ไม่เปิด CORS และยังไม่ตรวจ chain/วันหมดอายุ TLS</div>
           <form id="websiteForm" class="form-grid">
             <label for="websiteUrl">URL ของเว็บไซต์ (แนะนำ HTTPS)
               <input type="url" id="websiteUrl" placeholder="https://example.com" autocomplete="url" required>
             </label>
             <label class="checkline"><input type="checkbox" id="websiteConsent" required><span>ฉันเป็นเจ้าของเว็บไซต์นี้หรือได้รับอนุญาตให้ตรวจสอบ และยินยอมให้ส่งคำขอ HEAD หนึ่งครั้ง</span></label>
-            <button class="btn" type="submit">เริ่มตรวจแบบ Passive</button>
+            <button class="btn" type="submit" data-i18n="web.submitBtn">เริ่มตรวจแบบ Passive</button>
           </form>
           <div id="websiteResults" class="results" aria-live="polite"><div class="empty">ผลการตรวจจะแสดงที่นี่</div></div>
         </div>
@@ -270,8 +279,8 @@
 
       <section class="view" id="view-code">
         <div class="card">
-          <h2>วิเคราะห์ซอร์สโค้ด</h2>
-          <p class="sub">ตรวจสัญญาณเสี่ยงทั่วไปในไฟล์ที่เลือกหรือโค้ดที่วาง โดยประมวลผลทั้งหมดใน browser ของคุณ</p>
+          <h2 data-i18n="code.title">วิเคราะห์ซอร์สโค้ด</h2>
+          <p class="sub" data-i18n="code.sub">ตรวจสัญญาณเสี่ยงทั่วไปในไฟล์ที่เลือกหรือโค้ดที่วาง โดยประมวลผลทั้งหมดใน browser ของคุณ</p>
           <div class="callout info">การวิเคราะห์นี้เป็นกฎพื้นฐาน ไม่ใช่ SAST เต็มรูปแบบ ผลที่พบเป็นเพียงจุดเริ่มต้นสำหรับการตรวจสอบด้วยคน</div>
           <form id="codeForm" class="form-grid">
             <label for="codeFiles">เลือกไฟล์โค้ด (สูงสุด 15 ไฟล์, 1 MB ต่อไฟล์)
@@ -279,9 +288,9 @@
               <div id="fileList" class="file-list"></div>
             </label>
             <label for="codeInput">หรือวางโค้ด
-              <textarea id="codeInput" placeholder="วางโค้ดที่ต้องการวิเคราะห์..."></textarea>
+              <textarea id="codeInput" placeholder="วางโค้ดที่ต้องการวิเคราะห์..." data-i18n-placeholder="code.pastePlaceholder"></textarea>
             </label>
-            <button class="btn" type="submit">วิเคราะห์ในเครื่อง</button>
+            <button class="btn" type="submit" data-i18n="code.submitBtn">วิเคราะห์ในเครื่อง</button>
           </form>
           <div id="codeResults" class="results" aria-live="polite"><div class="empty">ผลการวิเคราะห์จะแสดงที่นี่</div></div>
         </div>
@@ -291,8 +300,8 @@
         <div class="card">
           <div class="result-head">
             <div>
-              <h2>ตรวจสอบช่องโหว่แพ็กเกจ (Dependency & Package Vulnerability Inspector)</h2>
-              <p class="sub">ตรวจหาช่องโหว่ความปลอดภัยระดับสากลจากฐานข้อมูล Google OSV (Open Source Vulnerabilities) ได้ทันที ค้นหาโดยตรงไม่ต้องอัปโหลดไฟล์ หรือเลือกชุดตัวอย่างด่วน</p>
+              <h2 data-i18n="dep.title">ตรวจสอบช่องโหว่แพ็กเกจ (Dependency & Package Vulnerability Inspector)</h2>
+              <p class="sub" data-i18n="dep.sub">ตรวจหาช่องโหว่ความปลอดภัยระดับสากลจากฐานข้อมูล Google OSV (Open Source Vulnerabilities) ได้ทันที ค้นหาโดยตรงไม่ต้องอัปโหลดไฟล์ หรือเลือกชุดตัวอย่างด่วน</p>
             </div>
             <div class="header-actions">
               <span class="lock-tag secure">Google OSV API · Real-time</span>
@@ -302,7 +311,7 @@
 
           <!-- Quick Presets (1-Click Inspection) -->
           <div class="dep-presets-panel">
-            <span class="dep-presets-title">⚡ ตรวจด่วนคลิกเดียว (ไม่ต้องอัปโหลดไฟล์):</span>
+            <span class="dep-presets-title" data-i18n="dep.presetsTitle">⚡ ตรวจด่วนคลิกเดียว (ไม่ต้องอัปโหลดไฟล์):</span>
             <div class="dep-preset-buttons">
               <button type="button" class="preset-btn danger-preset" id="presetVulnBtn">
                 <span>🚨</span> <strong>ชุดเสี่ยงที่มีช่องโหว่ (Demo CVEs)</strong>
@@ -322,14 +331,14 @@
           <!-- Direct Input Form -->
           <form id="quickDepForm" class="form-grid mb-14">
             <div class="quick-dep-grid">
-              <input type="text" id="quickDepInput" placeholder="พิมพ์ชื่อแพ็กเกจ เช่น express@4.17.1, lodash@4.17.15 หรือ requests@2.25.1" autocomplete="off">
+              <input type="text" id="quickDepInput" placeholder="พิมพ์ชื่อแพ็กเกจ เช่น express@4.17.1, lodash@4.17.15 หรือ requests@2.25.1" autocomplete="off" data-i18n-placeholder="dep.inputPlaceholder">
               <select id="quickDepEcosystem">
                 <option value="npm">npm (JavaScript / Node)</option>
                 <option value="PyPI">PyPI (Python)</option>
                 <option value="Go">Go (Golang)</option>
                 <option value="Maven">Maven (Java)</option>
               </select>
-              <button class="btn" type="submit" id="quickDepSubmitBtn">🔍 ตรวจสอบทันที</button>
+              <button class="btn" type="submit" id="quickDepSubmitBtn" data-i18n="dep.checkBtn">🔍 ตรวจสอบทันที</button>
             </div>
           </form>
 
@@ -362,8 +371,8 @@
         <div class="card">
           <div class="result-head">
             <div>
-              <h2>สแกนไวรัสและความปลอดภัยของเครื่อง (Real System Antivirus Scanner)</h2>
-              <p class="sub">สแกนไฟล์จริงบนฮาร์ดดิสก์ของเครื่องโดยตรง ด้วย YARA Heuristics Engine ตรวจจับโทรจัน นามสกุลหลอกลวง และมัลแวร์ ไม่ต้องอัปโหลดไฟล์</p>
+              <h2 data-i18n="virus.title">สแกนไวรัสและความปลอดภัยของเครื่อง (Real System Antivirus Scanner)</h2>
+              <p class="sub" data-i18n="virus.sub">สแกนไฟล์จริงบนฮาร์ดดิสก์ของเครื่องโดยตรง ด้วย YARA Heuristics Engine ตรวจจับโทรจัน นามสกุลหลอกลวง และมัลแวร์ ไม่ต้องอัปโหลดไฟล์</p>
             </div>
             <div class="header-actions">
               <span class="lock-tag secure" id="sysScanStatusBadge">พร้อมสแกน</span>
@@ -375,24 +384,24 @@
             <label class="scan-mode-card active" id="modeCardQuick">
               <input type="radio" name="sysScanMode" value="quick" checked>
               <div class="scan-mode-info">
-                <strong class="scan-mode-title">⚡ สแกนด่วน (Quick Scan)</strong>
-                <span class="scan-mode-desc">สแกนโฟลเดอร์จุดเสี่ยงทันที (Downloads, Desktop, Startup, Documents, Temp)</span>
+                <strong class="scan-mode-title" data-i18n="virus.quickMode">⚡ สแกนด่วน (Quick Scan)</strong>
+                <span class="scan-mode-desc" data-i18n="virus.quickDesc">สแกนโฟลเดอร์จุดเสี่ยงทันที (Downloads, Desktop, Startup, Documents, Temp)</span>
               </div>
             </label>
 
             <label class="scan-mode-card" id="modeCardFull">
               <input type="radio" name="sysScanMode" value="full">
               <div class="scan-mode-info">
-                <strong class="scan-mode-title">🖥️ สแกนทั้งเครื่อง (Full System Scan)</strong>
-                <span class="scan-mode-desc">สแกนทั้งไดรฟ์ C:\ ทุกไฟล์และทุกโฟลเดอร์ในเครื่องอย่างละเอียด</span>
+                <strong class="scan-mode-title" data-i18n="virus.fullMode">🖥️ สแกนทั้งเครื่อง (Full System Scan)</strong>
+                <span class="scan-mode-desc" data-i18n="virus.fullDesc">สแกนทั้งไดรฟ์ C:\ ทุกไฟล์และทุกโฟลเดอร์ในเครื่องอย่างละเอียด</span>
               </div>
             </label>
 
             <label class="scan-mode-card" id="modeCardCustom">
               <input type="radio" name="sysScanMode" value="custom">
               <div class="scan-mode-info">
-                <strong class="scan-mode-title">📁 สแกนโฟลเดอร์เฉพาะ (Custom Path)</strong>
-                <span class="scan-mode-desc">ระบุเส้นทางโฟลเดอร์ที่ต้องการเจาะจงสแกน</span>
+                <strong class="scan-mode-title" data-i18n="virus.customMode">📁 สแกนโฟลเดอร์เฉพาะ (Custom Path)</strong>
+                <span class="scan-mode-desc" data-i18n="virus.customDesc">ระบุเส้นทางโฟลเดอร์ที่ต้องการเจาะจงสแกน</span>
               </div>
             </label>
           </div>
@@ -403,9 +412,9 @@
 
           <!-- Controls -->
           <div class="header-actions mt-14">
-            <button class="btn" id="btnStartSysScan" type="button">▶️ เริ่มสแกนจริงจากเครื่องทันที</button>
-            <button class="btn danger" id="btnStopSysScan" type="button" disabled>⏹️ หยุดสแกน</button>
-            <button class="btn secondary" id="btnSysScanDemo" type="button">📡 ทดลองจำลองสแกน (Demo)</button>
+            <button class="btn" id="btnStartSysScan" type="button" data-i18n="virus.startBtn">▶️ เริ่มสแกนจริงจากเครื่องทันที</button>
+            <button class="btn danger" id="btnStopSysScan" type="button" disabled data-i18n="virus.stopBtn">⏹️ หยุดสแกน</button>
+            <button class="btn secondary" id="btnSysScanDemo" type="button" data-i18n="virus.demoBtn">📡 ทดลองจำลองสแกน (Demo)</button>
           </div>
 
           <!-- Live Scanning Radar & Metrics -->
@@ -492,13 +501,13 @@
         <div class="card">
           <div class="result-head">
             <div>
-              <h2>ตรวจสอบ Wi-Fi และระดับความปลอดภัยสัญญาณ</h2>
-              <p class="sub">สแกนและเลือกสัญญาณ Wi-Fi ในพื้นที่เพื่อตรวจสอบว่ามีรหัสผ่านหรือไม่, ความแรงสัญญาณ และระดับความปลอดภัย</p>
+              <h2 data-i18n="wifi.title">ตรวจสอบ Wi-Fi และระดับความปลอดภัยสัญญาณ</h2>
+              <p class="sub" data-i18n="wifi.sub">สแกนและเลือกสัญญาณ Wi-Fi ในพื้นที่เพื่อตรวจสอบว่ามีรหัสผ่านหรือไม่, ความแรงสัญญาณ และระดับความปลอดภัย</p>
             </div>
             <div class="header-actions">
-              <button class="btn" id="btnScanWifiHardware" type="button">⚡ สแกน Wi-Fi จริงจากเครื่องนี้</button>
-              <button class="btn secondary" id="btnScanWifiLive" type="button">📡 จำลองสัญญาณ (Demo)</button>
-              <button class="btn secondary" id="btnTriggerUploadWifi" type="button">📂 นำเข้าไฟล์</button>
+              <button class="btn" id="btnScanWifiHardware" type="button" data-i18n="wifi.scanHardware">⚡ สแกน Wi-Fi จริงจากเครื่องนี้</button>
+              <button class="btn secondary" id="btnScanWifiLive" type="button" data-i18n="wifi.scanDemo">📡 จำลองสัญญาณ (Demo)</button>
+              <button class="btn secondary" id="btnTriggerUploadWifi" type="button" data-i18n="wifi.importFile">📂 นำเข้าไฟล์</button>
             </div>
           </div>
 
@@ -517,7 +526,7 @@
                 <h3>สัญญาณ Wi-Fi ที่ตรวจพบ (<span id="wifiNetworkCount">0</span>)</h3>
                 <span class="lock-tag secure" id="wifiScanningBadge">พร้อมสแกน</span>
               </div>
-              <input type="text" id="wifiSearchInput" class="wifi-search-input" placeholder="🔍 ค้นหาชื่อสัญญาณ (SSID)...">
+              <input type="text" id="wifiSearchInput" class="wifi-search-input" placeholder="🔍 ค้นหาชื่อสัญญาณ (SSID)..." data-i18n-placeholder="wifi.searchPlaceholder">
               <div class="wifi-list" id="wifiNetworkList">
                 <div class="empty">กดปุ่ม "สแกนสัญญาณรอบข้างทันที" หรือนำเข้าไฟล์รายงานเพื่อแสดงรายการสัญญาณ Wi-Fi</div>
               </div>
@@ -589,6 +598,7 @@
     </main>
   </div>
 
+  <script type="module" src="assets/i18n.js"></script>
   <script type="module" src="assets/app.js"></script>
   <script type="module" src="assets/auth-guard.js"></script>
 </body>

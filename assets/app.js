@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { t, getLanguage } from "./i18n.js";
 
 "use strict";
 
@@ -63,13 +64,16 @@ async function authenticatedApiFetch(path, options = {}) {
   return fetch(apiUrl(path), { ...options, headers });
 }
 
+let currentActiveView = "dashboard";
+
 function showView(name) {
+  currentActiveView = name;
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("active", view.id === "view-" + name));
   navButtons.forEach((button) => {
     if (button.dataset.view === name) button.setAttribute("aria-current", "page");
     else button.removeAttribute("aria-current");
   });
-  document.getElementById("pageTitle").textContent = titles[name];
+  document.getElementById("pageTitle").textContent = t("title." + name, titles[name]);
 }
 navButtons.forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
 document.querySelectorAll("[data-go]").forEach((button) => button.addEventListener("click", () => showView(button.dataset.go)));
@@ -717,57 +721,57 @@ function calculateSecurityScore() {
     if (scoreNumber) scoreNumber.textContent = "100";
     if (scoreBadge) {
       scoreBadge.className = "score-badge safe";
-      scoreBadge.textContent = "เกรด A+ · พร้อมใช้งาน";
+      scoreBadge.textContent = t("score.grade.ready", "เกรด A+ · พร้อมใช้งาน");
     }
     if (scoreCircle) scoreCircle.className = "score-circle";
-    if (scoreTitle) scoreTitle.textContent = "ระบบปลอดภัย ไม่พบช่องโหว่ความเสี่ยงสูง";
-    if (scoreDesc) scoreDesc.textContent = "ระบบพร้อมสำหรับการตรวจสอบความปลอดภัย เริ่มต้นสแกน Wi-Fi, ซอร์สโค้ด, ไวรัส หรือ Dependency เพื่อประเมินสถานะ";
-    if (printScore) printScore.textContent = "100 / 100 (เกรด A+)";
-    if (printStatus) printStatus.textContent = "พร้อมใช้งาน (Security Ready)";
+    if (scoreTitle) scoreTitle.textContent = t("score.title.ready", "ระบบปลอดภัย ไม่พบช่องโหว่ความเสี่ยงสูง");
+    if (scoreDesc) scoreDesc.textContent = t("score.desc.ready", "ระบบพร้อมสำหรับการตรวจสอบความปลอดภัย เริ่มต้นสแกน Wi-Fi, ซอร์สโค้ด, ไวรัส หรือ Dependency เพื่อประเมินสถานะ");
+    if (printScore) printScore.textContent = `100 / 100 (${t("score.grade.ready", "เกรด A+")})`;
+    if (printStatus) printStatus.textContent = t("score.status.ready", "พร้อมใช้งาน (Security Ready)");
     return;
   }
 
   const penalty = (state.high * 20) + (state.medium * 8) + (state.low * 2);
   const score = Math.max(0, Math.min(100, 100 - penalty));
 
-  let gradeText = "เกรด A+ · ปลอดภัยดีเยี่ยม";
+  let gradeText = t("score.grade.a_plus", "เกรด A+ · ปลอดภัยดีเยี่ยม");
   let statusClass = "safe";
-  let title = "ระบบปลอดภัย ไม่พบช่องโหว่ระดับวิกฤต";
-  let desc = "ผลการตรวจสอบทั้งหมดอยู่ในเกณฑ์ปลอดภัยสูง ตรวจสอบอย่างสม่ำเสมอเพื่อรักษามาตรฐาน";
-  let statusText = "ปลอดภัยดีเยี่ยม (Secure)";
+  let title = t("score.title.safe", "ระบบปลอดภัย ไม่พบช่องโหว่ระดับวิกฤต");
+  let desc = t("score.desc.safe", "ผลการตรวจสอบทั้งหมดอยู่ในเกณฑ์ปลอดภัยสูง ตรวจสอบอย่างสม่ำเสมอเพื่อรักษามาตรฐาน");
+  let statusText = t("score.status.safe", "ปลอดภัยดีเยี่ยม (Secure)");
 
   if (state.high > 0) {
     statusClass = "danger";
     if (score < 50) {
-      gradeText = "เกรด F · ความเสี่ยงระดับวิกฤต";
-      title = `พบช่องโหว่ความเสี่ยงสูง ${state.high} รายการ (ต้องแก้ไขด่วน)`;
+      gradeText = t("score.grade.f", "เกรด F · ความเสี่ยงระดับวิกฤต");
+      title = `${t("risk.high", "พบช่องโหว่ความเสี่ยงสูง")} ${state.high} ${t("common.items", "รายการ")}`;
       desc = "ระบบตรวจพบมัลแวร์, ซอร์สโค้ดที่มีความเสี่ยงร้ายแรง หรือ Wi-Fi ล้าสมัย แนะนำให้แก้ไขตามข้อเสนอแนะทันที";
-      statusText = "ความเสี่ยงวิกฤต (Critical Risk)";
+      statusText = t("score.status.critical", "ความเสี่ยงวิกฤต (Critical Risk)");
     } else {
-      gradeText = "เกรด D · มีความเสี่ยงสูง";
-      title = `พบข้อบกพร่องระดับสูง ${state.high} รายการ`;
+      gradeText = t("score.grade.d", "เกรด D · มีความเสี่ยงสูง");
+      title = `${t("risk.high", "พบข้อบกพร่องระดับสูง")} ${state.high} ${t("common.items", "รายการ")}`;
       desc = "ตรวจพบรายการที่ต้องได้รับการแก้ไขทันทีเพื่อป้องกันการถูกโจมตี กรุณาดูคำแนะนำในรายงาน";
-      statusText = "มีความเสี่ยงสูง (High Risk)";
+      statusText = t("score.status.high", "มีความเสี่ยงสูง (High Risk)");
     }
   } else if (state.medium > 0) {
     statusClass = "warning";
     if (score < 80) {
-      gradeText = "เกรด C · ควรปรับปรุง";
-      title = `พบข้อสังเกตปานกลาง ${state.medium} รายการ`;
+      gradeText = t("score.grade.c", "เกรด C · ควรปรับปรุง");
+      title = `${t("risk.medium", "พบข้อสังเกตปานกลาง")} ${state.medium} ${t("common.items", "รายการ")}`;
       desc = "ระบบมีความปลอดภัยพื้นฐาน แต่ยังขาด Security Headers หรือพบโค้ด/แพ็กเกจที่ควรระวัง";
-      statusText = "ควรปรับปรุง (Improvement Needed)";
+      statusText = t("score.status.improve", "ควรปรับปรุง (Improvement Needed)");
     } else {
-      gradeText = "เกรด B · ปลอดภัยระดับยอมรับได้";
-      title = `พบข้อสังเกตความเสี่ยงปานกลาง ${state.medium} รายการ`;
+      gradeText = t("score.grade.b", "เกรด B · ปลอดภัยระดับยอมรับได้");
+      title = `${t("risk.medium", "พบข้อสังเกตความเสี่ยงปานกลาง")} ${state.medium} ${t("common.items", "รายการ")}`;
       desc = "โครงสร้างความปลอดภัยอยู่ในเกณฑ์ดี แนะนำให้ปรับแต่งตามข้อสังเกตเพื่อความปลอดภัยสูงสุด";
-      statusText = "ยอมรับได้ (Acceptable)";
+      statusText = t("score.status.acceptable", "ยอมรับได้ (Acceptable)");
     }
   } else if (state.low > 0) {
-    gradeText = "เกรด A · ความปลอดภัยดี";
+    gradeText = t("score.grade.a", "เกรด A · ความปลอดภัยดี");
     statusClass = "safe";
-    title = `ระบบปลอดภัย พบข้อสังเกตระดับต่ำ ${state.low} รายการ`;
+    title = `${t("score.title.safe", "ระบบปลอดภัย")} (${state.low} ${t("common.items", "รายการ")})`;
     desc = "ไม่มีช่องโหว่ที่เป็นอันตรายโดยตรง รายการที่พบเป็นข้อแนะนำเพื่อการปรับแต่งให้รัดกุมยิ่งขึ้น";
-    statusText = "ความปลอดภัยดี (Good)";
+    statusText = t("score.status.good", "ความปลอดภัยดี (Good)");
   }
 
   if (scoreNumber) scoreNumber.textContent = String(score);
@@ -1084,7 +1088,7 @@ function renderHistory(filterType = currentHistoryFilter, searchQuery = currentS
 
   if (state.history.length === 0) {
     container.className = "empty";
-    container.textContent = "ยังไม่มีประวัติการตรวจ (ข้อมูลจะบันทึกลงเครื่องอัตโนมัติเมื่อทำการสแกน)";
+    container.textContent = t("report.emptyHistory", "ยังไม่มีประวัติการตรวจ (ข้อมูลจะบันทึกลงเครื่องอัตโนมัติเมื่อทำการสแกน)");
     return;
   }
 
@@ -1109,7 +1113,7 @@ function renderHistory(filterType = currentHistoryFilter, searchQuery = currentS
 
   if (filtered.length === 0) {
     container.className = "empty";
-    container.textContent = "ไม่พบประวัติการตรวจที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรอง";
+    container.textContent = t("report.noMatch", "ไม่พบประวัติการตรวจที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรอง");
     return;
   }
 
@@ -1117,13 +1121,23 @@ function renderHistory(filterType = currentHistoryFilter, searchQuery = currentS
   const table = document.createElement("table");
   const head = document.createElement("thead");
   const headerRow = document.createElement("tr");
-  ["ชนิดการตรวจ", "เป้าหมาย", "สถานะความเสี่ยง", "พบข้อสังเกต", "เวลาที่ตรวจ", "รายงาน"].forEach((label) => {
+  [
+    t("table.col.kind", "ชนิดการตรวจ"),
+    t("table.col.target", "เป้าหมาย"),
+    t("table.col.risk", "สถานะความเสี่ยง"),
+    t("table.col.findings", "พบข้อสังเกต"),
+    t("table.col.time", "เวลาที่ตรวจ"),
+    t("table.col.report", "รายงาน")
+  ].forEach((label) => {
     const cell = document.createElement("th");
     cell.textContent = label;
     headerRow.append(cell);
   });
   head.append(headerRow);
   const body = document.createElement("tbody");
+
+  const currentLang = getLanguage();
+  const localeStr = currentLang === "th" ? "th-TH" : (currentLang === "ja" ? "ja-JP" : (currentLang === "zh" ? "zh-CN" : (currentLang === "es" ? "es-ES" : "en-US")));
 
   filtered.forEach((scan) => {
     const row = document.createElement("tr");
@@ -1133,7 +1147,7 @@ function renderHistory(filterType = currentHistoryFilter, searchQuery = currentS
     const lowCnt = (scan.findings || []).filter((item) => item.level === "low").length;
 
     const cellKind = document.createElement("td");
-    cellKind.textContent = titles[scan.kind] || scan.kind;
+    cellKind.textContent = t("title." + scan.kind, titles[scan.kind] || scan.kind);
     row.append(cellKind);
 
     const cellTarget = document.createElement("td");
@@ -1144,38 +1158,38 @@ function renderHistory(filterType = currentHistoryFilter, searchQuery = currentS
     const riskBadge = document.createElement("span");
     if (highCnt > 0) {
       riskBadge.className = "badge danger";
-      riskBadge.textContent = `🚨 เสี่ยงสูง (${highCnt})`;
+      riskBadge.textContent = `🚨 ${t("risk.high", "เสี่ยงสูง")} (${highCnt})`;
     } else if (medCnt > 0) {
       riskBadge.className = "badge warning";
-      riskBadge.textContent = `⚠️ ปานกลาง (${medCnt})`;
+      riskBadge.textContent = `⚠️ ${t("risk.medium", "ปานกลาง")} (${medCnt})`;
     } else if (lowCnt > 0) {
       riskBadge.className = "badge info";
-      riskBadge.textContent = `ℹ️ ต่ำ (${lowCnt})`;
+      riskBadge.textContent = `ℹ️ ${t("risk.low", "ต่ำ")} (${lowCnt})`;
     } else {
       riskBadge.className = "badge safe";
-      riskBadge.textContent = "✅ ปลอดภัย";
+      riskBadge.textContent = `✅ ${t("risk.clean", "ปลอดภัย")}`;
     }
     cellRisk.append(riskBadge);
     row.append(cellRisk);
 
     const cellCount = document.createElement("td");
-    cellCount.textContent = String(flagged) + " รายการ";
+    cellCount.textContent = `${flagged} ${t("common.items", "รายการ")}`;
     row.append(cellCount);
 
     const cellTime = document.createElement("td");
-    cellTime.textContent = new Date(scan.completedAt).toLocaleString("th-TH");
+    cellTime.textContent = new Date(scan.completedAt).toLocaleString(localeStr);
     row.append(cellTime);
 
     const actionCell = document.createElement("td");
     const button = document.createElement("button");
     button.type = "button";
     button.className = "btn secondary";
-    button.textContent = "ดูผลรายงาน";
+    button.textContent = t("table.viewReport", "ดูผลรายงาน");
     button.addEventListener("click", () => {
       state.last = scan;
       renderFindings(document.getElementById("reportResults"), scan.findings);
       const tag = document.getElementById("reportLastKindTag");
-      if (tag) tag.textContent = `${titles[scan.kind] || scan.kind}: ${scan.target.length > 25 ? scan.target.slice(0, 22) + "..." : scan.target}`;
+      if (tag) tag.textContent = `${t("title." + scan.kind, titles[scan.kind] || scan.kind)}: ${scan.target.length > 25 ? scan.target.slice(0, 22) + "..." : scan.target}`;
       document.getElementById("reportResults")?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     actionCell.append(button);
@@ -2205,4 +2219,17 @@ if (btnExportSys) {
     URL.revokeObjectURL(url);
   });
 }
+
+// React to language switch dynamically
+window.addEventListener("languageChanged", () => {
+  const pageTitle = document.getElementById("pageTitle");
+  if (pageTitle && currentActiveView) {
+    pageTitle.textContent = t("title." + currentActiveView, titles[currentActiveView]);
+  }
+  calculateSecurityScore();
+  renderHistory();
+  const statusText = document.getElementById("backendStatusText");
+  if (statusText) statusText.textContent = t("topbar.ready", "ระบบพร้อมใช้งาน (Security Workspace · Ready)");
+});
+
 

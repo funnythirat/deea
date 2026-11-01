@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { t } from "./i18n.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAjyXKgx8Ox-s9tBsP2w2psXWM0EVUJCOk",
@@ -56,19 +57,23 @@ const authModes = {
   }
 };
 
+let currentAuthMode = "existing";
+
 function selectAuthMode(mode) {
+  currentAuthMode = mode;
   for (const [name, option] of Object.entries(authModes)) {
     const isSelected = name === mode;
     option.button.setAttribute("aria-pressed", String(isSelected));
     option.panel.hidden = !isSelected;
   }
-  document.getElementById("authTitle").textContent = authModes[mode].title;
-  document.getElementById("authIntro").textContent = authModes[mode].intro;
+  document.getElementById("authTitle").textContent = mode === "existing" ? t("login.authTitle", authModes.existing.title) : t("login.tabSignup", authModes.new.title);
+  document.getElementById("authIntro").textContent = mode === "existing" ? t("login.authIntro", authModes.existing.intro) : t("login.authIntroNew", authModes.new.intro);
   setAuthMessage("");
 }
 
 authModes.existing.button.addEventListener("click", () => selectAuthMode("existing"));
 authModes.new.button.addEventListener("click", () => selectAuthMode("new"));
+window.addEventListener("languageChanged", () => selectAuthMode(currentAuthMode));
 
 try {
   const auth = getAuth(initializeApp(firebaseConfig));
