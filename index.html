@@ -31,6 +31,7 @@
         <button type="button" data-view="code"><span class="nav-icon">⌘</span><span data-i18n="nav.code">ตรวจโค้ด</span></button>
         <button type="button" data-view="dependencies"><span class="nav-icon">◇</span><span data-i18n="nav.dependencies">ตรวจแพ็กเกจ</span></button>
         <button type="button" data-view="wifi"><span class="nav-icon">⌁</span><span data-i18n="nav.wifi">ตรวจ Wi-Fi</span></button>
+        <button type="button" data-view="ai"><span class="nav-icon">🤖</span><span data-i18n="nav.ai">ผู้ช่วย AI</span></button>
       </nav>
       <div class="side-note">
         <strong data-i18n="nav.sideNoteTitle">ใช้กับระบบที่ได้รับอนุญาตเท่านั้น</strong>
@@ -593,6 +594,74 @@
           <strong id="wifiCapturedAt"></strong>
         </div>
         <div id="wifiResults" hidden></div>
+      </section>
+
+      <section class="view" id="view-ai">
+        <div class="view-header">
+          <div class="eyebrow" data-i18n="ai.eyebrow">INTELLIGENT REMEDIATION ASSISTANT</div>
+          <h2 data-i18n="ai.title">ผู้ช่วย AI แนะนำการแก้ช่องโหว่ (AI Security Advisor)</h2>
+          <p class="sub" data-i18n="ai.sub">ถาม-ตอบปัญหาความปลอดภัย, รับคำแนะนำการแก้จุดบกพร่องของโค้ด, การตั้งค่าความปลอดภัยของเว็บไซต์ และการป้องกัน Wi-Fi ตามมาตรฐาน OWASP, CWE และ NIST</p>
+        </div>
+
+        <div class="ai-quick-section">
+          <div class="ai-quick-title" data-i18n="ai.quickTitle">หัวข้อด่วนที่พบบ่อย (Quick Prompts):</div>
+          <div class="ai-quick-chips" id="aiQuickPrompts">
+            <button type="button" class="ai-chip-btn" data-prompt="sql" data-i18n="ai.promptSql">💉 แก้ไข SQL Injection ในโค้ด</button>
+            <button type="button" class="ai-chip-btn" data-prompt="csp" data-i18n="ai.promptCsp">🛡️ สอนเขียน Content-Security-Policy</button>
+            <button type="button" class="ai-chip-btn" data-prompt="wifi" data-i18n="ai.promptWifi">📶 ป้องกัน Wi-Fi จากการถูกดักจับและ Hack</button>
+            <button type="button" class="ai-chip-btn" data-prompt="cve" data-i18n="ai.promptCve">📦 ตรวจสอบและอัปเดตช่องโหว่ Dependency (CVE)</button>
+            <button type="button" class="ai-chip-btn" data-prompt="yara" data-i18n="ai.promptYara">🦠 แนวทางจัดการเมื่อพบไฟล์ติดมัลแวร์หรือโทรจัน</button>
+          </div>
+        </div>
+
+        <div class="ai-chat-card">
+          <div class="ai-chat-header">
+            <div class="ai-chat-status">
+              <span class="ai-status-indicator online"></span>
+              <span>AI Advisor Engine (OWASP · CWE · NIST)</span>
+            </div>
+            <button type="button" class="btn secondary sm" id="btnAiClear" data-i18n="ai.clearBtn">🗑️ ล้างบทสนทนา</button>
+          </div>
+          <div class="ai-chat-messages" id="aiChatMessages" role="log" aria-live="polite">
+            <div class="ai-msg-bubble assistant">
+              <div class="ai-msg-avatar">🤖</div>
+              <div class="ai-msg-content">
+                <div class="ai-msg-title" data-i18n="ai.welcomeTitle">สวัสดีครับ! ผมคือ AI ผู้ช่วยความปลอดภัยระบบ (Security Advisor)</div>
+                <p data-i18n="ai.welcomeBody">ผมสามารถช่วยคุณวิเคราะห์จุดบกพร่อง, แนะนำโค้ดตัวอย่างสำหรับแก้ไขช่องโหว่ (SQL Injection, XSS, eval), สอนตั้งค่า Security Headers ให้เว็บไซต์, และแนะนำการปรับปรุงความปลอดภัยเครือข่าย Wi-Fi ได้ทันที คุณสามารถพิมพ์คำถามด้านล่าง หรือกดปุ่ม '🤖 ขอคำแนะนำ AI' จากผลการสแกนในหน้าต่างๆ ได้เลยครับ</p>
+              </div>
+            </div>
+          </div>
+          <form class="ai-chat-form" id="aiChatForm">
+            <textarea id="aiChatInput" class="ai-chat-input" rows="2" data-i18n-placeholder="ai.inputPlaceholder" placeholder="พิมพ์คำถามเรื่องความปลอดภัย หรือระบุจุดบกพร่องที่ต้องการคำแนะนำ..."></textarea>
+            <button type="submit" class="btn primary" id="btnAiSend" data-i18n="ai.sendBtn">ส่งคำถาม</button>
+          </form>
+        </div>
+
+        <div class="ai-matrix-wrap">
+          <h4 data-i18n="ai.matrixTitle">ฐานความรู้ด้านความปลอดภัยที่รองรับ (Supported Security Standards):</h4>
+          <div class="ai-matrix-grid">
+            <div class="ai-matrix-item">
+              <span class="ai-matrix-icon">🛡️</span>
+              <strong data-i18n="ai.matrixOwasp">OWASP Top 10</strong>
+              <p data-i18n="ai.matrixOwaspDesc">คำแนะนำป้องกัน Injection, Broken Access Control, Security Misconfiguration และ Cryptographic Failures</p>
+            </div>
+            <div class="ai-matrix-item">
+              <span class="ai-matrix-icon">💻</span>
+              <strong data-i18n="ai.matrixSecureCoding">Secure Coding</strong>
+              <p data-i18n="ai.matrixSecureCodingDesc">การ Sanitization ข้อมูล, Prepared Statements, หลีกเลี่ยง eval(), และการปกป้อง Secrets</p>
+            </div>
+            <div class="ai-matrix-item">
+              <span class="ai-matrix-icon">📶</span>
+              <strong data-i18n="ai.matrixWifi">Wi-Fi Hardening</strong>
+              <p data-i18n="ai.matrixWifiDesc">การเปลี่ยนไปใช้ WPA3/WPA2-AES, ปิด WPS, และการตั้งรหัสผ่านความยาว 12+ ตัวอักษร</p>
+            </div>
+            <div class="ai-matrix-item">
+              <span class="ai-matrix-icon">📦</span>
+              <strong data-i18n="ai.matrixCve">Vulnerability Remediation</strong>
+              <p data-i18n="ai.matrixCveDesc">การอัปเกรดเวอร์ชันแพ็กเกจที่ปลอดภัย และการวิเคราะห์ CVE Impact จาก Google OSV</p>
+            </div>
+          </div>
+        </div>
       </section>
       <p class="footer-note">เครื่องมือนี้ช่วยคัดกรองเบื้องต้น ไม่รับประกันว่าจะพบช่องโหว่ทั้งหมด และผล "ไม่พบ" ไม่ได้ยืนยันว่าระบบปลอดภัย ควรใช้เครื่องมือและผู้เชี่ยวชาญเพิ่มเติมก่อนใช้งานจริง โค้ดและรายงานที่เลือกวิเคราะห์จะประมวลผลใน browser; ไฟล์ไวรัสจะอัปโหลดก็ต่อเมื่อสั่งสแกนผ่าน Backend ที่ตั้งค่าไว้ ส่วนชื่อและเวอร์ชัน dependency จะส่งไปยัง OSV เมื่อกดยินยอม</p>
     </main>

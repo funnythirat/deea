@@ -33,7 +33,8 @@ const titles = {
   wifi: "ตรวจสอบ Wi-Fi",
   website: "ตรวจการตั้งค่าเว็บไซต์",
   code: "วิเคราะห์ซอร์สโค้ด",
-  dependencies: "ตรวจสอบ Dependency"
+  dependencies: "ตรวจสอบ Dependency",
+  ai: "ผู้ช่วย AI วิเคราะห์ความปลอดภัย"
 };
 const navButtons = document.querySelectorAll("[data-view]");
 const configuredApiBase = document.querySelector('meta[name="scanner-api-base"]').content.trim();
@@ -673,6 +674,16 @@ function addFinding(container, finding) {
     link.style.marginTop = "7px";
     link.style.fontSize = "11px";
     item.append(link);
+  }
+  if (finding.level === "high" || finding.level === "medium" || finding.level === "low" || finding.recommendation) {
+    const aiBtn = document.createElement("button");
+    aiBtn.type = "button";
+    aiBtn.className = "finding-advisor-btn";
+    aiBtn.textContent = t("ai.askAdvisorBtn", "🤖 ขอคำแนะนำ AI");
+    aiBtn.addEventListener("click", () => {
+      consultAiForFinding(finding);
+    });
+    item.append(aiBtn);
   }
   container.append(item);
 }
@@ -2230,6 +2241,544 @@ window.addEventListener("languageChanged", () => {
   renderHistory();
   const statusText = document.getElementById("backendStatusText");
   if (statusText) statusText.textContent = t("topbar.ready", "ระบบพร้อมใช้งาน (Security Workspace · Ready)");
+  const aiInput = document.getElementById("aiChatInput");
+  if (aiInput) {
+    aiInput.setAttribute("placeholder", t("ai.inputPlaceholder", "พิมพ์คำถามเรื่องความปลอดภัย หรือระบุจุดบกพร่องที่ต้องการคำแนะนำ..."));
+  }
 });
+
+// --- AI Security Assistant & Remediation Advisor ---
+
+function appendAiMessage(role, title, text, code = null, steps = []) {
+  const container = document.getElementById("aiChatMessages");
+  if (!container) return;
+
+  const bubble = document.createElement("div");
+  bubble.className = `ai-msg-bubble ${role}`;
+
+  const avatar = document.createElement("div");
+  avatar.className = "ai-msg-avatar";
+  avatar.textContent = role === "assistant" ? "🤖" : "👤";
+
+  const content = document.createElement("div");
+  content.className = "ai-msg-content";
+
+  if (title) {
+    const titleEl = document.createElement("div");
+    titleEl.className = "ai-msg-title";
+    titleEl.textContent = title;
+    content.append(titleEl);
+  }
+
+  if (text) {
+    const p = document.createElement("p");
+    p.textContent = text;
+    content.append(p);
+  }
+
+  if (Array.isArray(steps) && steps.length > 0) {
+    const ol = document.createElement("ol");
+    ol.className = "ai-step-list";
+    steps.forEach((step) => {
+      const li = document.createElement("li");
+      li.textContent = step;
+      ol.append(li);
+    });
+    content.append(ol);
+  }
+
+  if (code) {
+    const pre = document.createElement("pre");
+    pre.className = "ai-code-block";
+    pre.textContent = code;
+    content.append(pre);
+  }
+
+  bubble.append(avatar, content);
+  container.append(bubble);
+  container.scrollTop = container.scrollHeight;
+}
+
+function clearAiChat() {
+  const container = document.getElementById("aiChatMessages");
+  if (!container) return;
+  container.replaceChildren();
+  appendAiMessage(
+    "assistant",
+    t("ai.welcomeTitle", "สวัสดีครับ! ผมคือ AI ผู้ช่วยความปลอดภัยระบบ (Security Advisor)"),
+    t("ai.welcomeBody", "ผมสามารถช่วยคุณวิเคราะห์จุดบกพร่อง, แนะนำโค้ดตัวอย่างสำหรับแก้ไขช่องโหว่ (SQL Injection, XSS, eval), สอนตั้งค่า Security Headers ให้เว็บไซต์, และแนะนำการปรับปรุงความปลอดภัยเครือข่าย Wi-Fi ได้ทันที คุณสามารถพิมพ์คำถามด้านล่าง หรือกดปุ่ม '🤖 ขอคำแนะนำ AI' จากผลการสแกนในหน้าต่างๆ ได้เลยครับ")
+  );
+}
+
+const AI_SECURITY_KNOWLEDGE = {
+  sql: {
+    titles: {
+      th: "💉 แนวทางแก้ไขช่องโหว่ SQL Injection (CWE-89 / OWASP A03:2021)",
+      en: "💉 SQL Injection Remediation (CWE-89 / OWASP A03:2021)",
+      zh: "💉 SQL 注入漏洞修复方案 (CWE-89 / OWASP A03:2021)",
+      ja: "💉 SQL インジェクション修復ガイド (CWE-89 / OWASP A03:2021)",
+      es: "💉 Remediación de Inyección SQL (CWE-89 / OWASP A03:2021)"
+    },
+    explanations: {
+      th: "SQL Injection เกิดจากการนำข้อมูลที่รับจากผู้ใช้หรือภายนอกไปเชื่อมต่อ (concatenate) เข้ากับคำสั่ง SQL โดยตรง ทำให้ผู้โจมตีสามารถแทรกคำสั่งเพื่อขโมยข้อมูล ลบฐานข้อมูล หรือข้ามระบบล็อกอินได้",
+      en: "SQL Injection occurs when untrusted input is concatenated directly into SQL queries, enabling attackers to bypass authentication, dump sensitive database tables, or execute unauthorized commands.",
+      zh: "SQL 注入是由于未经验证的用户输入直接拼接到 SQL 查询语句中，攻击者可借此绕过认证、窃取核心数据或破坏数据库。",
+      ja: "SQLインジェクションは、信頼できないユーザー入力をSQL文に直接連結することで発生し、攻撃者による認証回避やデータ漏洩を引き起こします。",
+      es: "La Inyección SQL ocurre cuando entradas no confiables se concatenan directamente en consultas SQL, permitiendo a los atacantes extraer datos o eludir la autenticación."
+    },
+    steps: {
+      th: [
+        "หลีกเลี่ยงการต่อสตริงด้วย String Concatenation หรือ Template Literals ในคำสั่ง SQL",
+        "ใช้ Parameterized Queries (Prepared Statements) ในทุกจุดที่มีการเรียกฐานข้อมูล",
+        "ใช้ Object-Relational Mapping (ORM) เช่น SQLAlchemy, Prisma หรือ Hibernate",
+        "จำกัดสิทธิ์ผู้ใช้ของฐานข้อมูลตามหลัก Least Privilege (ไม่ใช้ root/sa ในแอปพลิเคชัน)"
+      ],
+      en: [
+        "Never concatenate user input directly into SQL strings",
+        "Use Parameterized Queries / Prepared Statements for all database interactions",
+        "Employ an established ORM such as SQLAlchemy, Prisma, or Hibernate",
+        "Enforce database Principle of Least Privilege (never use root/sa in app runtime)"
+      ],
+      zh: [
+        "杜绝使用字符串拼接或模板字符串构造 SQL 语句",
+        "所有数据库操作均必须使用参数化查询（Prepared Statements）",
+        "使用成熟的 ORM 框架（如 SQLAlchemy、Prisma 等）",
+        "按照最小权限原则为应用程序配置数据库访问账户"
+      ],
+      ja: [
+        "SQL文内で文字列連結やテンプレートリテラルを使用しない",
+        "すべてのDBアクセスでプリペアドステートメント（パラメータ化クエリ）を使用する",
+        "SQLAlchemy や Prisma などの信頼できる ORM を導入する",
+        "DB接続ユーザーの権限を最小限に制限する（Least Privilege）"
+      ],
+      es: [
+        "Nunca concatenar cadenas de usuario directamente en sentencias SQL",
+        "Utilizar sentencias preparadas (Prepared Statements) con parámetros",
+        "Utilizar un ORM consolidado como SQLAlchemy, Prisma o Hibernate",
+        "Aplicar el principio de privilegios mínimos para el usuario de base de datos"
+      ]
+    },
+    code: `# [Python / PostgreSQL] ตัวอย่างการแก้ไขให้ปลอดภัย (Secure Parameterized Query):
+# ❌ มีช่องโหว่ (Vulnerable):
+# cursor.execute(f"SELECT * FROM users WHERE username = '{user_input}'")
+
+# ✅ ปลอดภัย (Secure):
+cursor.execute(
+    "SELECT id, username, email FROM users WHERE username = %s AND status = %s",
+    (user_input, "active")
+)`
+  },
+
+  csp: {
+    titles: {
+      th: "🛡️ แนวทางตั้งค่า HTTP Security Headers & Content-Security-Policy (CSP)",
+      en: "🛡️ HTTP Security Headers & Content-Security-Policy (CSP) Guide",
+      zh: "🛡️ HTTP 安全标头与 Content-Security-Policy (CSP) 配置指南",
+      ja: "🛡️ HTTP セキュリティヘッダーおよび CSP 設定ガイド",
+      es: "🛡️ Guía de Cabeceras de Seguridad HTTP y Content-Security-Policy (CSP)"
+    },
+    explanations: {
+      th: "Security Headers ช่วยป้องกันการโจมตีทางเว็บที่พบบ่อย เช่น Cross-Site Scripting (XSS), Clickjacking, และ MIME-type Sniffing โดยการสั่งให้เบราว์เซอร์บังคับใช้นโยบายความปลอดภัยที่เข้มงวด",
+      en: "HTTP Security Headers protect web applications from common attacks including Cross-Site Scripting (XSS), Clickjacking, and MIME sniffing by instructing modern browsers to enforce strict security boundaries.",
+      zh: "HTTP 安全标头通过指示现代浏览器强制执行严格的安全策略，有效防御 XSS 跨站脚本、点击劫持和 MIME 嗅探等主流威胁。",
+      ja: "HTTP セキュリティヘッダーは、ブラウザに対して厳格な制御を指示することで、XSS、クリックジャッキング、MIME スニッフィングなどの攻撃を防ぎます。",
+      es: "Las cabeceras de seguridad HTTP protegen las aplicaciones web frente a XSS, Clickjacking y MIME sniffing al exigir directivas estrictas en los navegadores."
+    },
+    steps: {
+      th: [
+        "ตั้งค่า Content-Security-Policy (CSP) เพื่อจำกัดโดเมนที่อนุญาตให้โหลดสคริปต์และทรัพยากร",
+        "เปิดใช้ Strict-Transport-Security (HSTS) บังคับ HTTPS ขั้นต่ำ 1 ปี",
+        "กำหนด X-Frame-Options: DENY เพื่อป้องกัน Clickjacking",
+        "กำหนด X-Content-Type-Options: nosniff ป้องกันเบราว์เซอร์เดาชนิดไฟล์ผิดพลาด",
+        "กำหนด Referrer-Policy: strict-origin-when-cross-origin เพื่อปกป้อง URL และ Token"
+      ],
+      en: [
+        "Configure Content-Security-Policy (CSP) to restrict script and asset sources",
+        "Enable Strict-Transport-Security (HSTS) with at least 1-year max-age",
+        "Set X-Frame-Options: DENY to prevent Clickjacking framing",
+        "Set X-Content-Type-Options: nosniff to stop MIME sniffing",
+        "Set Referrer-Policy: strict-origin-when-cross-origin to safeguard sensitive URLs"
+      ],
+      zh: [
+        "配置 Content-Security-Policy 限制允许加载脚本与资源的来源",
+        "启用 Strict-Transport-Security (HSTS) 强制全站 HTTPS（至少 1 年）",
+        "设置 X-Frame-Options: DENY 防止点击劫持（Clickjacking）",
+        "设置 X-Content-Type-Options: nosniff 防止 MIME 类型嗅探",
+        "设置 Referrer-Policy: strict-origin-when-cross-origin 保护请求凭证"
+      ],
+      ja: [
+        "Content-Security-Policy を設定しスクリプトの不正読み込みを遮断する",
+        "Strict-Transport-Security (HSTS) を有効化し、HTTPSを常時強制する",
+        "X-Frame-Options: DENY を設定してクリックジャッキングを防止する",
+        "X-Content-Type-Options: nosniff でMIMEスニッフィングを遮断する",
+        "Referrer-Policy で送信元URL情報の漏洩を防ぐ"
+      ],
+      es: [
+        "Configurar Content-Security-Policy para restringir la carga de recursos",
+        "Habilitar Strict-Transport-Security (HSTS) para forzar HTTPS",
+        "Establecer X-Frame-Options: DENY para evitar ataques de Clickjacking",
+        "Establecer X-Content-Type-Options: nosniff contra sniffing de tipos MIME",
+        "Configurar Referrer-Policy para proteger parámetros de URL sensibles"
+      ]
+    },
+    code: `# [Nginx Configuration Example]
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self';" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+add_header X-Frame-Options "DENY" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "geolocation=(), camera=(), microphone=()" always;`
+  },
+
+  wifi: {
+    titles: {
+      th: "📶 แนวทางยกระดับความปลอดภัย Wi-Fi และเราเตอร์ (Wireless Hardening)",
+      en: "📶 Wi-Fi & Wireless Router Hardening Best Practices",
+      zh: "📶 Wi-Fi 无线网络与路由器安全加固规范",
+      ja: "📶 Wi-Fi およびルーターセキュリティ強化手順",
+      es: "📶 Fortalecimiento y Buenas Prácticas de Redes Wi-Fi"
+    },
+    explanations: {
+      th: "สัญญาณ Wi-Fi ที่ไม่มีรหัสผ่าน (OPEN) หรือใช้เทคโนโลยีล้าสมัย (WEP / WPA1 / TKIP) เสี่ยงต่อการถูกดักฟังข้อมูล (Packet Sniffing), การโจมตี Evil Twin, และการถอดรหัสผ่านภายในเวลาไม่กี่นาที",
+      en: "Unencrypted (OPEN) or legacy (WEP/WPA1/TKIP) Wi-Fi networks expose users to packet sniffing, Man-in-the-Middle (MitM) attacks, and rapid offline key cracking.",
+      zh: "未加密（OPEN）或使用淘汰协议（WEP/WPA1/TKIP）的 Wi-Fi 极易遭受数据包嗅探、中间人攻击及快速离线破解。",
+      ja: "暗号化なし（OPEN）や旧規格（WEP/WPA1/TKIP）の Wi-Fi はパケット盗聴や中間者攻撃、パスワード解読のリスクに直面します。",
+      es: "Las redes Wi-Fi abiertas (OPEN) o con cifrados obsoletos (WEP/WPA1/TKIP) son vulnerables al sniffing de tráfico y ataques Man-in-the-Middle."
+    },
+    steps: {
+      th: [
+        "ปรับการตั้งค่าบนเราเตอร์เป็น WPA3-Personal (WPA3-SAE) หรือ WPA2-AES (CCMP)",
+        "ปิดฟังก์ชัน WPS (Wi-Fi Protected Setup) บนเราเตอร์ทันที เนื่องจากมีช่องโหว่ PIN Brute-force",
+        "ตั้งรหัสผ่าน Wi-Fi ให้มีความยาวอย่างน้อย 14-16 ตัวอักษร ผสมตัวเลข ตัวพิมพ์ใหญ่ และสัญลักษณ์",
+        "แยกเครือข่ายสำหรับอุปกรณ์ IoT และแขกด้วย Guest Network พร้อมเปิดโหมด AP Isolation",
+        "อัปเดต Firmware ของเราเตอร์เป็นเวอร์ชันล่าสุดสม่ำเสมอ และปิด Remote Admin Access ผ่าน WAN"
+      ],
+      en: [
+        "Upgrade router security mode to WPA3-Personal (SAE) or WPA2-AES (CCMP)",
+        "Disable WPS (Wi-Fi Protected Setup) immediately to block PIN brute-force attacks",
+        "Set a strong passphrase of 14-16+ characters with mixed case, numbers, and symbols",
+        "Segregate IoT devices and visitors onto an isolated Guest Network with AP Isolation",
+        "Regularly update router firmware and disable WAN/Internet remote admin management"
+      ],
+      zh: [
+        "将路由器安全模式升级为 WPA3-Personal (SAE) 或 WPA2-AES (CCMP)",
+        "立即在路由器中禁用 WPS（Wi-Fi Protected Setup），消除 PIN 码暴力破解隐患",
+        "设置至少 14 位混合大小写字母、数字及符号的高强度连接密码",
+        "开启访客网络（Guest Network）并启用 AP 隔离，分离智能家居 IoT 设备",
+        "定期更新路由器固件，并关闭外网远程管理功能 (WAN Remote Access)"
+      ],
+      ja: [
+        "ルーターの認証方式を WPA3-Personal (SAE) または WPA2-AES に設定する",
+        "PIN 総当たり攻撃の温床となる WPS (Wi-Fi Protected Setup) を直ちに無効化する",
+        "14文字以上の大文字・小文字・記号・数字を混在させた強固なパスワードを設定する",
+        "ゲストネットワークとAPアイソレーションを有効にし、IoT機器を隔離する",
+        "ファームウェアを定期更新し、WAN側からのリモート管理アクセスを遮断する"
+      ],
+      es: [
+        "Actualizar la configuración a WPA3-Personal (SAE) o WPA2-AES (CCMP)",
+        "Desactivar WPS en el router para bloquear ataques de fuerza bruta al PIN",
+        "Establecer una contraseña de al menos 14 caracteres con símbolos y números",
+        "Aislar dispositivos IoT e invitados en una red Guest con AP Isolation",
+        "Mantener el firmware actualizado y desactivar el acceso remoto desde WAN"
+      ]
+    },
+    code: `[การตั้งค่า Router ที่แนะนำ / Recommended Settings]
+Authentication : WPA3-Personal (SAE) / WPA2-Personal (AES)
+Cipher         : AES-CCMP / GCMP-256 (ห้ามใช้ TKIP)
+WPS            : Disabled (ปิดการใช้งาน)
+AP Isolation   : Enabled สำหรับ Guest Wi-Fi
+Admin Password : เปลี่ยนรหัสผ่านแอดมินเราเตอร์ (ห้ามใช้ admin/admin)`
+  },
+
+  cve: {
+    titles: {
+      th: "📦 แนวทางการตรวจสอบและแก้ไขช่องโหว่ Dependency (CVE Remediation)",
+      en: "📦 Dependency CVE Vulnerability Patching Guide",
+      zh: "📦 依赖包 CVE 漏洞分析与修复方案",
+      ja: "📦 依存パッケージ CVE 脆弱性のパッチ適用と修復手順",
+      es: "📦 Guía de Remediación de Vulnerabilidades CVE en Paquetes"
+    },
+    explanations: {
+      th: "โปรเจกต์มักพึ่งพา Third-party Packages (NPM, PyPI, Maven) ซึ่งอาจมีช่องโหว่ CVE ที่ถูกเผยแพร่สู่สาธารณะแล้ว ทำให้ผู้โจมตีสามารถอาศัยช่องโหว่ดังกล่าวเจาะระบบผ่านไลบรารีได้",
+      en: "Modern projects rely on third-party libraries (npm, PyPI, Maven) which frequently harbor disclosed CVE vulnerabilities, allowing attackers to compromise the application via supply chain vectors.",
+      zh: "软件系统高度依赖第三方开源包（npm、PyPI 等），若未及时修补已知 CVE 漏洞，攻击者可利用开源组件漏洞轻易入侵系统。",
+      ja: "多くのプロジェクトが依存するサードパーティパッケージ（npm、PyPIなど）の既知のCVE脆弱性は、サプライチェーン攻撃の標的となります。",
+      es: "Las dependencias de terceros (npm, PyPI) a menudo contienen vulnerabilidades CVE conocidas que pueden ser explotadas por atacantes."
+    },
+    steps: {
+      th: [
+        "ตรวจสอบรายการแพ็กเกจที่มีช่องโหว่ผ่าน Google OSV Database หรือ npm audit / pip-audit",
+        "ตรวจสอบเวอร์ชันแก้ไข (Patched Version) และอัปเกรดแพ็กเกจไปยังเวอร์ชันที่ปลอดภัย",
+        "หากเวอร์ชันใหม่มี Breaking Changes ให้ตรวจสอบ Release Notes และรัน Unit Tests",
+        "ใช้ Lockfile (package-lock.json, poetry.lock) เพื่อล็อกเวอร์ชันและป้องกัน Dependency Confusion",
+        "เปิดใช้ GitHub Dependabot Alerts เพื่อรับการแจ้งเตือนและ Auto-PR ทันทีที่มีช่องโหว่ใหม่"
+      ],
+      en: [
+        "Audit dependencies using Google OSV Database, npm audit, or pip-audit",
+        "Identify patched versions and update your requirements.txt or package.json",
+        "Review changelogs and run automated test suites to ensure no breaking changes",
+        "Commit lockfiles (package-lock.json, poetry.lock) to enforce reproducible builds",
+        "Enable GitHub Dependabot alerts for automated CVE detection and pull requests"
+      ],
+      zh: [
+        "利用 Google OSV 漏洞库或 npm audit / pip-audit 定期扫描依赖项",
+        "查阅 CVE 修复公告，将漏洞包升级至官方推荐的安全版本",
+        "在升级后执行完整的自动化测试，防止破坏性更新（Breaking Changes）",
+        "严格提交并锁定 lockfile（如 package-lock.json、poetry.lock）",
+        "启用 GitHub Dependabot 监控，第一时间接收依赖安全补丁"
+      ],
+      ja: [
+        "Google OSV や npm audit、pip-audit で依存関係の脆弱性を検査する",
+        "脆弱性情報に記載された安全な修正済みバージョンへアップデートする",
+        "自動テストを実行し、アップデートに伴う破壊的変更がないか確認する",
+        "package-lock.json などのロックファイルを確実にコミットして管理する",
+        "GitHub Dependabot などの自動検知ツールを有効化する"
+      ],
+      es: [
+        "Auditar dependencias con Google OSV, npm audit o pip-audit",
+        "Actualizar los paquetes vulnerables a las versiones que contienen el parche",
+        "Ejecutar pruebas automatizadas para validar que no haya cambios incompatibles",
+        "Mantener siempre actualizados y versionados los archivos lockfile",
+        "Activar Dependabot en GitHub para recibir alertas de CVEs automáticamente"
+      ]
+    },
+    code: `# คำสั่งตรวจสอบและอัปเดตแพ็กเกจ (Terminal Commands):
+# สำหรับ JavaScript / Node.js:
+npm audit
+npm audit fix --force
+npm update <package_name>
+
+# สำหรับ Python:
+pip install pip-audit
+pip-audit
+pip install --upgrade <package_name>`
+  },
+
+  yara: {
+    titles: {
+      th: "🦠 แนวทางจัดการเมื่อตรวจพบมัลแวร์ โทรจัน หรือไฟล์ต้องสงสัย (Incident Response)",
+      en: "🦠 Malware & Suspicious File Incident Containment Protocol",
+      zh: "🦠 恶意软件/木马应急隔离与处置响应指南",
+      ja: "🦠 マルウェア・トロイの木馬検出時の緊急対応手順",
+      es: "🦠 Protocolo de Respuesta ante Incidentes de Malware o Troyanos"
+    },
+    explanations: {
+      th: "เมื่อระบบหรือเอนจิน YARA ตรวจพบไฟล์ที่เป็นอันตราย (เช่น ไฟล์นามสกุลซ้อน .docx.exe, มัลแวร์เรียกค่าไถ่ หรือโทรจัน) จำเป็นต้องมีกระบวนการกักกัน (Containment) และกำจัดอย่างถูกต้องเพื่อป้องกันการแพร่กระจาย",
+      en: "When YARA or antivirus engines flag a threat (such as double extensions .docx.exe, ransomware, or trojans), immediate containment is required to stop lateral movement and data exfiltration.",
+      zh: "当 YARA 或防病毒引擎报警发现恶意文件（如双重扩展名 .docx.exe、勒索软件或木马）时，必须立即执行隔离与应急响应，阻断横向扩散。",
+      ja: "YARAやアンチウイルスによって悪意あるファイル（二重拡張子 .docx.exe、トロイの木馬など）が検知された場合、感染拡大を防ぐため迅速な封じ込めが必要です。",
+      es: "Cuando un motor YARA o antivirus detecta una amenaza (como extensiones dobles .docx.exe o troyanos), se requiere contención inmediata para evitar su propagación."
+    },
+    steps: {
+      th: [
+        "ตัดการเชื่อมต่อเครือข่ายของเครื่องทันที (ปิด Wi-Fi และถอดสาย LAN)",
+        "ห้ามเปิด ดับเบิลคลิก หรือเปลี่ยนชื่อไฟล์ต้องสงสัยเด็ดขาด",
+        "ตรวจสอบ Process ที่ทำงานอยู่ และยุติกระบวนการที่น่าสงสัย (Kill Process)",
+        "ทำการกักกัน (Quarantine) หรือลบไฟล์แบบถาวร (Secure Delete)",
+        "สแกนระบบทั้งเครื่องด้วย Microsoft Defender Offline Scan เพื่อตรวจหามัลแวร์ที่แฝงตัว"
+      ],
+      en: [
+        "Isolate the machine immediately (disconnect Wi-Fi and unplug network cables)",
+        "Do NOT execute, rename, or inspect the file with standard office tools",
+        "Terminate anomalous running processes via Task Manager or PowerShell",
+        "Quarantine or permanently delete the malicious payload",
+        "Perform a full Microsoft Defender Offline Scan to detect rootkits"
+      ],
+      zh: [
+        "立即断开网络连接（关闭 Wi-Fi 并拔掉网线），防止横向移动",
+        "严禁双击运行、重命名或在办公软件中打开可疑文件",
+        "在任务管理器中检查并强制终止异常的后台进程",
+        "将恶意文件隔离或彻底永久粉碎删除",
+        "执行 Microsoft Defender 脱机扫描，彻底排查隐藏的后门木马"
+      ],
+      ja: [
+        "直ちにネットワークを切断する（Wi-Fi オフ、LAN ケーブル抜去）",
+        "不審なファイルを絶対に開いたりダブルクリックしたりしない",
+        "タスクマネージャーで不審なプロセスを特定し強制終了する",
+        "ファイルを隔離または完全削除する",
+        "Microsoft Defender オフラインスキャンを実行し、システム全体を精密検査する"
+      ],
+      es: [
+        "Desconectar el equipo de la red inmediatamente (Wi-Fi y cable LAN)",
+        "NO abrir, ejecutar ni hacer doble clic en el archivo sospechoso",
+        "Finalizar los procesos sospechosos en ejecución mediante PowerShell",
+        "Poner en cuarentena o eliminar permanentemente el archivo",
+        "Realizar un escaneo completo sin conexión con Microsoft Defender"
+      ]
+    },
+    code: `# PowerShell Commands for Incident Containment:
+# 1. ตรวจสอบกระบวนการต้องสงสัยที่กำลังทำงาน:
+Get-Process | Where-Object { $_.Path -like "*Desktop*" -or $_.Path -like "*Temp*" }
+
+# 2. ยุติกระบวนการอันตรายทันที:
+Stop-Process -Name "urgent_bill*" -Force
+
+# 3. ตรวจสอบ Windows Security Protection History:
+Get-MpThreatDetection`
+  }
+};
+
+async function querySecurityAi(query, contextFinding = null) {
+  const lang = getLanguage();
+  const q = (query || "").toLowerCase();
+
+  let category = "general";
+  if (q.includes("sql") || q.includes("injection") || q.includes("select") || q.includes("union")) {
+    category = "sql";
+  } else if (q.includes("csp") || q.includes("content-security-policy") || q.includes("hsts") || q.includes("header") || q.includes("frame")) {
+    category = "csp";
+  } else if (q.includes("wifi") || q.includes("wi-fi") || q.includes("wpa") || q.includes("wep") || q.includes("cipher") || q.includes("ssid")) {
+    category = "wifi";
+  } else if (q.includes("cve") || q.includes("dep") || q.includes("npm") || q.includes("pypi") || q.includes("package") || q.includes("osv") || q.includes("lodash") || q.includes("express")) {
+    category = "cve";
+  } else if (q.includes("yara") || q.includes("virus") || q.includes("malware") || q.includes("trojan") || q.includes("urgent_bill") || q.includes("eicar")) {
+    category = "yara";
+  }
+
+  // Check if we have pre-built expert knowledge for this category
+  if (AI_SECURITY_KNOWLEDGE[category]) {
+    const item = AI_SECURITY_KNOWLEDGE[category];
+    const title = item.titles[lang] || item.titles.th;
+    let explanation = item.explanations[lang] || item.explanations.th;
+    let steps = item.steps[lang] || item.steps.th;
+    let code = item.code;
+
+    // If there is finding context, customize the message
+    if (contextFinding) {
+      explanation = `[คำแนะนำเฉพาะสำหรับ: ${contextFinding.title}]\n${contextFinding.detail || ""}\n\n${explanation}`;
+      if (contextFinding.recommendation) {
+        steps = [`ข้อแนะนำเดิม: ${contextFinding.recommendation}`, ...steps];
+      }
+    }
+
+    // Attempt backend AI summary enhancement if user is signed in
+    try {
+      if (auth.currentUser && apiBase && contextFinding) {
+        const resp = await authenticatedApiFetch("ai/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ findings: [contextFinding] })
+        });
+        if (resp.ok) {
+          const aiData = await resp.json();
+          if (Array.isArray(aiData.cve_feed) && aiData.cve_feed.length > 0) {
+            code += `\n\n# ข้อมูลช่องโหว่ที่เกี่ยวข้องจาก Threat Feed:\n` +
+              aiData.cve_feed.map(c => `# [${c.id}] ${c.severity}: ${c.summary}`).join("\n");
+          }
+        }
+      }
+    } catch {
+      // ignore backend error, knowledge engine output is already complete
+    }
+
+    appendAiMessage("assistant", title, explanation, code, steps);
+    return;
+  }
+
+  // Fallback for general cybersecurity queries
+  const defaultTitles = {
+    th: "🤖 คำแนะนำด้านความปลอดภัยระบบ (General Security Advice)",
+    en: "🤖 General Security Remediation Guidance",
+    zh: "🤖 系统安全综合建议 (Security Guidance)",
+    ja: "🤖 総合セキュリティガイダンス",
+    es: "🤖 Asesoramiento General de Ciberseguridad"
+  };
+
+  const defaultExplanations = {
+    th: `ผมได้วิเคราะห์คำถามของคุณ: "${query}" แล้ว ขอแนะนำแนวทางปฏิบัติตามมาตรฐาน OWASP และ NIST เพื่อปกป้องระบบของคุณให้ปลอดภัยสูงสุด:`,
+    en: `Analyzing your inquiry: "${query}". Based on OWASP and NIST guidelines, here are the recommended best practices to secure your infrastructure:`,
+    zh: `针对您的咨询：“${query}”，基于 OWASP 与 NIST 安全规范，建议采取以下安全防护措施：`,
+    ja: `ご質問内容「${query}」を分析しました。OWASP および NIST のガイドラインに基づき、以下のセキュリティ対策を推奨します：`,
+    es: `Analizando su consulta: "${query}". Según los estándares OWASP y NIST, recomendamos las siguientes medidas para asegurar su entorno:`
+  };
+
+  const defaultSteps = {
+    th: [
+      "ตรวจสอบและปิดช่องโหว่ที่มีความเสี่ยงสูง (Critical / High) จากรายงานการสแกนทันที",
+      "อัปเดตเวอร์ชันของระบบปฏิบัติการ, เว็บเซิร์ฟเวอร์ และไลบรารีภายนอกให้เป็นเวอร์ชันล่าสุด",
+      "จำกัดสิทธิ์การเข้าถึง (Least Privilege) และเปิดใช้งานการยืนยันตัวตนหลายปัจจัย (MFA)",
+      "เปิดระบบบันทึกประวัติ (Audit Logging) และสำรองข้อมูลอย่างสม่ำเสมอตามกฎ 3-2-1"
+    ],
+    en: [
+      "Triage and remediate High/Critical vulnerabilities from your scan reports first",
+      "Keep your OS, web server software, and dependencies continuously patched",
+      "Enforce Least Privilege access control and enable Multi-Factor Authentication (MFA)",
+      "Maintain audit logs and regular off-site backups following the 3-2-1 rule"
+    ],
+    zh: [
+      "优先排查并处置安全扫描报告中标记的高危与严重漏洞",
+      "定期更新操作系统、Web 服务器及第三方依赖至最新稳定版本",
+      "遵循最小权限原则（Least Privilege）并强制启用多因素认证（MFA）",
+      "建立审计日志追踪机制，并按 3-2-1 原则执行异地数据备份"
+    ],
+    ja: [
+      "診断レポートで検出された高危険度・重要脆弱性を最優先で対処する",
+      "OS、Webサーバー、依存ライブラリを常に最新バージョンに維持する",
+      "最小権限の原則（Least Privilege）を徹底し、多要素認証（MFA）を導入する",
+      "監査ログを記録し、3-2-1ルールに基づいた定期的なデータバックアップを実施する"
+    ],
+    es: [
+      "Priorizar la mitigación de vulnerabilidades críticas y altas de los reportes",
+      "Mantener el sistema operativo, servidores web y dependencias siempre actualizados",
+      "Aplicar el principio de privilegios mínimos y habilitar autenticación multifactor (MFA)",
+      "Registrar logs de auditoría y mantener copias de seguridad según la regla 3-2-1"
+    ]
+  };
+
+  appendAiMessage(
+    "assistant",
+    defaultTitles[lang] || defaultTitles.th,
+    defaultExplanations[lang] || defaultExplanations.th,
+    null,
+    defaultSteps[lang] || defaultSteps.th
+  );
+}
+
+function consultAiForFinding(finding) {
+  showView("ai");
+  const lang = getLanguage();
+  const prompts = {
+    th: `ขอคำแนะนำวิธีแก้ไขสำหรับจุดบกพร่อง: "${finding.title}" (ระดับ: ${finding.level || "info"})`,
+    en: `Please provide remediation advice for: "${finding.title}" (Severity: ${finding.level || "info"})`,
+    zh: `请提供针对漏洞 "${finding.title}" 的修复指导（严重程度：${finding.level || "info"}）`,
+    ja: `検出項目「${finding.title}」（重要度: ${finding.level || "info"}）の修復手順を教えてください`,
+    es: `Por favor indique pasos de remediación para: "${finding.title}" (Severidad: ${finding.level || "info"})`
+  };
+  const userText = prompts[lang] || prompts.th;
+  appendAiMessage("user", null, userText);
+  querySecurityAi(finding.title + " " + (finding.detail || ""), finding);
+}
+
+// Attach AI Assistant UI Event Handlers
+const aiForm = document.getElementById("aiChatForm");
+if (aiForm) {
+  aiForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const input = document.getElementById("aiChatInput");
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    appendAiMessage("user", null, text);
+    input.value = "";
+    querySecurityAi(text);
+  });
+}
+
+const btnClearAi = document.getElementById("btnAiClear");
+if (btnClearAi) {
+  btnClearAi.addEventListener("click", clearAiChat);
+}
+
+const quickPromptContainer = document.getElementById("aiQuickPrompts");
+if (quickPromptContainer) {
+  quickPromptContainer.querySelectorAll(".ai-chip-btn").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const promptType = chip.dataset.prompt;
+      const chipText = chip.textContent.trim();
+      appendAiMessage("user", null, chipText);
+      querySecurityAi(promptType + " " + chipText);
+    });
+  });
+}
 
 

@@ -25,6 +25,7 @@ export const translations = {
     "nav.code": "ตรวจโค้ด",
     "nav.dependencies": "ตรวจแพ็กเกจ",
     "nav.wifi": "ตรวจ Wi-Fi",
+    "nav.ai": "ผู้ช่วย AI",
     "nav.sideNoteTitle": "ใช้กับระบบที่ได้รับอนุญาตเท่านั้น",
     "nav.sideNoteDesc": "สแกนเฉพาะไฟล์ที่คุณเลือกอัปโหลด ไฟล์จะถูกกักไว้ชั่วคราวและไม่ถูกรันโดยระบบ",
 
@@ -44,6 +45,7 @@ export const translations = {
     "title.code": "วิเคราะห์ซอร์สโค้ด",
     "title.dependencies": "ตรวจสอบ Dependency",
     "title.wifi": "ตรวจสอบ Wi-Fi",
+    "title.ai": "ผู้ช่วย AI วิเคราะห์ความปลอดภัย",
 
     // Hero
     "hero.title": "ยินดีต้อนรับสู่ วิถีป้องกันรอบด้าน (Security Workspace)",
@@ -204,7 +206,33 @@ export const translations = {
     "login.labelPasswordMin": "รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)",
     "login.labelPasswordConfirm": "ยืนยันรหัสผ่าน",
     "login.btnSignup": "สมัครบัญชีใหม่",
-    "login.warning": "การเข้าสู่ระบบนี้ใช้ Firebase Authentication เท่านั้น การเรียกใช้งาน Backend ยังคงต้องผ่านการตรวจสอบสิทธิ์ที่ฝั่งเซิร์ฟเวอร์"
+    "login.warning": "การเข้าสู่ระบบนี้ใช้ Firebase Authentication เท่านั้น การเรียกใช้งาน Backend ยังคงต้องผ่านการตรวจสอบสิทธิ์ที่ฝั่งเซิร์ฟเวอร์",
+
+    // AI Assistant View
+    "ai.eyebrow": "INTELLIGENT REMEDIATION ASSISTANT",
+    "ai.title": "ผู้ช่วย AI แนะนำการแก้ช่องโหว่ (AI Security Advisor)",
+    "ai.sub": "ถาม-ตอบปัญหาความปลอดภัย, รับคำแนะนำการแก้จุดบกพร่องของโค้ด, การตั้งค่าความปลอดภัยของเว็บไซต์ และการป้องกัน Wi-Fi ตามมาตรฐาน OWASP, CWE และ NIST",
+    "ai.welcomeTitle": "สวัสดีครับ! ผมคือ AI ผู้ช่วยความปลอดภัยระบบ (Security Advisor)",
+    "ai.welcomeBody": "ผมสามารถช่วยคุณวิเคราะห์จุดบกพร่อง, แนะนำโค้ดตัวอย่างสำหรับแก้ไขช่องโหว่ (SQL Injection, XSS, eval), สอนตั้งค่า Security Headers ให้เว็บไซต์, และแนะนำการปรับปรุงความปลอดภัยเครือข่าย Wi-Fi ได้ทันที คุณสามารถพิมพ์คำถามด้านล่าง หรือกดปุ่ม '🤖 ขอคำแนะนำ AI' จากผลการสแกนในหน้าต่างๆ ได้เลยครับ",
+    "ai.quickTitle": "หัวข้อด่วนที่พบบ่อย (Quick Prompts):",
+    "ai.promptSql": "💉 แก้ไข SQL Injection ในโค้ด",
+    "ai.promptCsp": "🛡️ สอนเขียน Content-Security-Policy",
+    "ai.promptWifi": "📶 ป้องกัน Wi-Fi จากการถูกดักจับและ Hack",
+    "ai.promptCve": "📦 ตรวจสอบและอัปเดตช่องโหว่ Dependency (CVE)",
+    "ai.promptYara": "🦠 แนวทางจัดการเมื่อพบไฟล์ติดมัลแวร์หรือโทรจัน",
+    "ai.inputPlaceholder": "พิมพ์คำถามเรื่องความปลอดภัย หรือระบุจุดบกพร่องที่ต้องการคำแนะนำ...",
+    "ai.sendBtn": "ส่งคำถาม",
+    "ai.clearBtn": "🗑️ ล้างบทสนทนา",
+    "ai.askAdvisorBtn": "🤖 ขอคำแนะนำ AI",
+    "ai.matrixTitle": "ฐานความรู้ด้านความปลอดภัยที่รองรับ (Supported Security Standards):",
+    "ai.matrixOwasp": "OWASP Top 10",
+    "ai.matrixOwaspDesc": "คำแนะนำป้องกัน Injection, Broken Access Control, Security Misconfiguration และ Cryptographic Failures",
+    "ai.matrixSecureCoding": "Secure Coding",
+    "ai.matrixSecureCodingDesc": "การ Sanitization ข้อมูล, Prepared Statements, หลีกเลี่ยง eval(), และการปกป้อง Secrets",
+    "ai.matrixWifi": "Wi-Fi Hardening",
+    "ai.matrixWifiDesc": "การเปลี่ยนไปใช้ WPA3/WPA2-AES, ปิด WPS, และการตั้งรหัสผ่านความยาว 12+ ตัวอักษร",
+    "ai.matrixCve": "Vulnerability Remediation",
+    "ai.matrixCveDesc": "การอัปเกรดเวอร์ชันแพ็กเกจที่ปลอดภัย และการวิเคราะห์ CVE Impact จาก Google OSV"
   },
 
   en: {
@@ -219,6 +247,7 @@ export const translations = {
     "nav.code": "Code Analysis",
     "nav.dependencies": "Dependencies",
     "nav.wifi": "Wi-Fi Inspector",
+    "nav.ai": "AI Assistant",
     "nav.sideNoteTitle": "Authorized Use Only",
     "nav.sideNoteDesc": "Scan only files you choose to upload. Files are quarantined in memory and never executed.",
 
@@ -238,6 +267,7 @@ export const translations = {
     "title.code": "Source Code Vulnerability Review",
     "title.dependencies": "Dependency & CVE Audit",
     "title.wifi": "Wi-Fi Security Analyzer",
+    "title.ai": "AI Security Advisor & Remediation",
 
     // Hero
     "hero.title": "Welcome to Security Workspace (360° Defense)",
@@ -398,7 +428,33 @@ export const translations = {
     "login.labelPasswordMin": "Password (minimum 6 characters)",
     "login.labelPasswordConfirm": "Confirm Password",
     "login.btnSignup": "Create New Account",
-    "login.warning": "Authentication is powered by Firebase. Backend service calls remain secured and authenticated server-side."
+    "login.warning": "Authentication is powered by Firebase. Backend service calls remain secured and authenticated server-side.",
+
+    // AI Assistant View
+    "ai.eyebrow": "INTELLIGENT REMEDIATION ASSISTANT",
+    "ai.title": "AI Security Advisor & Vulnerability Remediation",
+    "ai.sub": "Ask cybersecurity questions, get tailored remediation steps for code vulnerabilities, secure web configs, and Wi-Fi hardening based on OWASP, CWE, and NIST standards.",
+    "ai.welcomeTitle": "Hello! I am your AI Security Advisor.",
+    "ai.welcomeBody": "I can help you analyze vulnerabilities, provide remediated code snippets (SQL Injection, XSS, eval), guide HTTP Security Headers configuration, and recommend wireless network hardening. You can ask questions below or click '🤖 Ask AI Fix' directly from scan findings.",
+    "ai.quickTitle": "Quick Prompts:",
+    "ai.promptSql": "💉 Fix SQL Injection in Code",
+    "ai.promptCsp": "🛡️ Configure Content-Security-Policy",
+    "ai.promptWifi": "📶 Harden Wi-Fi against Attacks",
+    "ai.promptCve": "📦 Review & Patch Dependency CVEs",
+    "ai.promptYara": "🦠 Action Plan for Malware / Trojan Detection",
+    "ai.inputPlaceholder": "Ask a cybersecurity question or specify a finding to remediate...",
+    "ai.sendBtn": "Send Inquiry",
+    "ai.clearBtn": "🗑️ Clear Chat",
+    "ai.askAdvisorBtn": "🤖 Ask AI Fix",
+    "ai.matrixTitle": "Supported Security Knowledge & Frameworks:",
+    "ai.matrixOwasp": "OWASP Top 10",
+    "ai.matrixOwaspDesc": "Defenses against Injections, Broken Access Control, Misconfigurations, and Cryptographic Failures",
+    "ai.matrixSecureCoding": "Secure Coding",
+    "ai.matrixSecureCodingDesc": "Input Sanitization, Prepared Statements, eliminating eval(), and Secrets Protection",
+    "ai.matrixWifi": "Wi-Fi Hardening",
+    "ai.matrixWifiDesc": "Migrating to WPA3/WPA2-AES, disabling WPS, and enforcing 12+ character passphrases",
+    "ai.matrixCve": "Vulnerability Remediation",
+    "ai.matrixCveDesc": "Upgrading to patched package versions and Google OSV CVE severity analysis"
   },
 
   zh: {
@@ -413,6 +469,7 @@ export const translations = {
     "nav.code": "代码分析",
     "nav.dependencies": "依赖包审计",
     "nav.wifi": "Wi-Fi 检测",
+    "nav.ai": "AI 助手",
     "nav.sideNoteTitle": "仅限授权系统",
     "nav.sideNoteDesc": "仅扫描您上传的文件。文件仅保留在临时内存中，绝不会被执行。",
 
@@ -432,6 +489,7 @@ export const translations = {
     "title.code": "源码安全审计",
     "title.dependencies": "依赖包漏洞检测",
     "title.wifi": "Wi-Fi 安全分析仪",
+    "title.ai": "AI 安全顾问与漏洞修复",
 
     // Hero
     "hero.title": "欢迎使用全方位防护工作区 (Security Workspace)",
@@ -592,7 +650,33 @@ export const translations = {
     "login.labelPasswordMin": "密码 (至少 6 位字符)",
     "login.labelPasswordConfirm": "确认密码",
     "login.btnSignup": "创建新账号",
-    "login.warning": "登录仅使用 Firebase 身份验证。后端请求仍在服务端进行严格的权限验证。"
+    "login.warning": "登录仅使用 Firebase 身份验证。后端请求仍在服务端进行严格的权限验证。",
+
+    // AI Assistant View
+    "ai.eyebrow": "INTELLIGENT REMEDIATION ASSISTANT",
+    "ai.title": "AI 安全顾问与漏洞修复指南 (AI Security Advisor)",
+    "ai.sub": "咨询网络安全问题，获取针对源代码漏洞、网站安全标头与 Wi-Fi 加固的详细修复方案（基于 OWASP、CWE 与 NIST 标准）。",
+    "ai.welcomeTitle": "您好！我是您的 AI 安全顾问助手。",
+    "ai.welcomeBody": "我可以协助您分析安全缺陷、提供修复后代码范例（SQL注入、XSS、eval）、指导配置网站安全标头，并提供无线网络加固建议。您可在下方输入提问，或直接点击扫描结果中的“🤖 咨询 AI”按钮。",
+    "ai.quickTitle": "常见快捷提问 (Quick Prompts):",
+    "ai.promptSql": "💉 修复代码中的 SQL 注入风险",
+    "ai.promptCsp": "🛡️ 编写 Content-Security-Policy 标头",
+    "ai.promptWifi": "📶 防范 Wi-Fi 抓包与破解风险",
+    "ai.promptCve": "📦 检查并更新依赖包漏洞 (CVE)",
+    "ai.promptYara": "🦠 发现恶意木马或病毒后的应对处置",
+    "ai.inputPlaceholder": "输入网络安全疑问或需修复的漏洞描述...",
+    "ai.sendBtn": "发送咨询",
+    "ai.clearBtn": "🗑️ 清空对话",
+    "ai.askAdvisorBtn": "🤖 咨询 AI",
+    "ai.matrixTitle": "支持的安全标准与知识库 (Security Standards):",
+    "ai.matrixOwasp": "OWASP Top 10",
+    "ai.matrixOwaspDesc": "针对注入攻击、权限缺陷、安全配置失误与密码学失效的防护指南",
+    "ai.matrixSecureCoding": "安全编码规范",
+    "ai.matrixSecureCodingDesc": "参数化查询、数据过滤、杜绝 eval() 及敏感凭据保密",
+    "ai.matrixWifi": "无线安全加固",
+    "ai.matrixWifiDesc": "升级至 WPA3/WPA2-AES、禁用 WPS 及设置 12 位以上复杂强密码",
+    "ai.matrixCve": "依赖漏洞修复",
+    "ai.matrixCveDesc": "升级安全依赖版本并联动 Google OSV 实时评估 CVE 影响"
   },
 
   ja: {
@@ -607,6 +691,7 @@ export const translations = {
     "nav.code": "ソースコード解析",
     "nav.dependencies": "依存関係監査",
     "nav.wifi": "Wi-Fi セキュリティ",
+    "nav.ai": "AI アシスタント",
     "nav.sideNoteTitle": "許可されたシステム専用",
     "nav.sideNoteDesc": "選択したファイルのみスキャンします。ファイルは実行されず安全に検査されます。",
 
@@ -626,6 +711,7 @@ export const translations = {
     "title.code": "ソースコード脆弱性分析",
     "title.dependencies": "依存パッケージ脆弱性監査",
     "title.wifi": "Wi-Fi セキュリティアナライザー",
+    "title.ai": "AI セキュリティアドバイザー＆脆弱性修復",
 
     // Hero
     "hero.title": "多層防御セキュリティワークスペースへようこそ",
@@ -786,7 +872,33 @@ export const translations = {
     "login.labelPasswordMin": "パスワード (6文字以上)",
     "login.labelPasswordConfirm": "パスワード再入力",
     "login.btnSignup": "新規アカウント作成",
-    "login.warning": "認証は Firebase Authentication を使用しています。バックエンドの各機能も安全に保護されています。"
+    "login.warning": "認証は Firebase Authentication を使用しています。バックエンドの各機能も安全に保護されています。",
+
+    // AI Assistant View
+    "ai.eyebrow": "INTELLIGENT REMEDIATION ASSISTANT",
+    "ai.title": "AI セキュリティアドバイザー＆脆弱性修復ガイド",
+    "ai.sub": "サイバーセキュリティの相談、脆弱性コードの修正手順、Webサイト設定、Wi-Fiセキュリティ強化策をOWASP、CWE、NIST基準に基づいて提案します。",
+    "ai.welcomeTitle": "こんにちは！AI セキュリティアドバイザーです。",
+    "ai.welcomeBody": "脆弱性の分析、コード修正スニペットの提案（SQLインジェクション、XSS、eval）、HTTPセキュリティヘッダーの設定支援、Wi-Fiネットワークの安全性強化をサポートします。以下から質問するか、検出項目の「🤖 AIに相談」ボタンを押してください。",
+    "ai.quickTitle": "よくある質問 (Quick Prompts):",
+    "ai.promptSql": "💉 コードの SQL インジェクション修正",
+    "ai.promptCsp": "🛡️ Content-Security-Policy の設定方法",
+    "ai.promptWifi": "📶 Wi-Fi の盗聴・攻撃防止対策",
+    "ai.promptCve": "📦 パッケージ依存関係の脆弱性 (CVE) 対応",
+    "ai.promptYara": "🦠 マルウェア・トロイの木馬検出時の対処手順",
+    "ai.inputPlaceholder": "セキュリティに関する質問や修正したい脆弱性を入力...",
+    "ai.sendBtn": "質問を送信",
+    "ai.clearBtn": "🗑️ 会話をクリア",
+    "ai.askAdvisorBtn": "🤖 AIに相談",
+    "ai.matrixTitle": "準拠するセキュリティ標準とナレッジベース:",
+    "ai.matrixOwasp": "OWASP Top 10",
+    "ai.matrixOwaspDesc": "インジェクション、不適切なアクセス制御、設定不備、暗号化欠陥の防御策",
+    "ai.matrixSecureCoding": "セキュアコーディング",
+    "ai.matrixSecureCodingDesc": "プリペアドステートメント、入力サニタイズ、eval() 排除、認証情報の秘匿",
+    "ai.matrixWifi": "Wi-Fi セキュリティ強化",
+    "ai.matrixWifiDesc": "WPA3/WPA2-AES への移行、WPS の無効化、12 文字以上の強力なパスワード設定",
+    "ai.matrixCve": "脆弱性修復",
+    "ai.matrixCveDesc": "安全なパッケージへのアップデートと Google OSV による CVE 影響分析"
   },
 
   es: {
@@ -801,6 +913,7 @@ export const translations = {
     "nav.code": "Análisis de Código",
     "nav.dependencies": "Dependencias",
     "nav.wifi": "Inspector Wi-Fi",
+    "nav.ai": "Asistente IA",
     "nav.sideNoteTitle": "Solo Sistemas Autorizados",
     "nav.sideNoteDesc": "Analice solo archivos seleccionados. Se analizan de forma aislada y nunca se ejecutan en el sistema.",
 
@@ -820,6 +933,7 @@ export const translations = {
     "title.code": "Revisión de Código Fuente",
     "title.dependencies": "Auditoría de Dependencias y CVEs",
     "title.wifi": "Analizador de Seguridad Wi-Fi",
+    "title.ai": "Asesor de Seguridad IA y Remediación",
 
     // Hero
     "hero.title": "Bienvenido al Espacio de Trabajo de Seguridad (Defensa 360°)",
@@ -980,7 +1094,33 @@ export const translations = {
     "login.labelPasswordMin": "Contraseña (mínimo 6 caracteres)",
     "login.labelPasswordConfirm": "Confirmar Contraseña",
     "login.btnSignup": "Crear Cuenta Nueva",
-    "login.warning": "La autenticación utiliza Firebase. Todas las operaciones de backend continúan protegidas en el servidor."
+    "login.warning": "La autenticación utiliza Firebase. Todas las operaciones de backend continúan protegidas en el servidor.",
+
+    // AI Assistant View
+    "ai.eyebrow": "INTELLIGENT REMEDIATION ASSISTANT",
+    "ai.title": "Asesor de Seguridad IA y Remediación de Vulnerabilidades",
+    "ai.sub": "Consulte dudas de ciberseguridad, obtenga pasos de remediación para vulnerabilidades de código, cabeceras web y hardening de Wi-Fi según estándares OWASP, CWE y NIST.",
+    "ai.welcomeTitle": "¡Hola! Soy su Asesor de Ciberseguridad con IA.",
+    "ai.welcomeBody": "Puedo ayudarle a analizar vulnerabilidades, proporcionar código corregido (Inyección SQL, XSS, eval), configurar encabezados de seguridad HTTP y fortalecer la red Wi-Fi. Escriba su consulta abajo o pulse '🤖 Consultar a la IA' desde los hallazgos.",
+    "ai.quickTitle": "Consultas Rápidas:",
+    "ai.promptSql": "💉 Corregir Inyección SQL en Código",
+    "ai.promptCsp": "🛡️ Configurar Content-Security-Policy",
+    "ai.promptWifi": "📶 Proteger Wi-Fi contra Ataques",
+    "ai.promptCve": "📦 Revisar y Parchear CVEs de Dependencias",
+    "ai.promptYara": "🦠 Plan de Acción ante Malware o Troyanos",
+    "ai.inputPlaceholder": "Pregunte sobre ciberseguridad o describa un hallazgo a resolver...",
+    "ai.sendBtn": "Enviar Consulta",
+    "ai.clearBtn": "🗑️ Limpiar Chat",
+    "ai.askAdvisorBtn": "🤖 Consultar a la IA",
+    "ai.matrixTitle": "Estándares y Marcos de Seguridad Soportados:",
+    "ai.matrixOwasp": "OWASP Top 10",
+    "ai.matrixOwaspDesc": "Defensas contra inyecciones, control de acceso roto, malas configuraciones y fallos criptográficos",
+    "ai.matrixSecureCoding": "Codificación Segura",
+    "ai.matrixSecureCodingDesc": "Sentencias preparadas, sanitización de entradas, eliminación de eval() y protección de secretos",
+    "ai.matrixWifi": "Hardening Wi-Fi",
+    "ai.matrixWifiDesc": "Migración a WPA3/WPA2-AES, desactivación de WPS y contraseñas robustas de más de 12 caracteres",
+    "ai.matrixCve": "Remediación de CVEs",
+    "ai.matrixCveDesc": "Actualización a versiones parcheadas y análisis de impacto con Google OSV"
   }
 };
 
