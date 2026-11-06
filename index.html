@@ -57,6 +57,8 @@
         </div>
       </header>
 
+      <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
       <section class="view active" id="view-dashboard">
         <div class="hero">
           <h2 data-i18n="hero.title">ศูนย์ควบคุมและประเมินความปลอดภัยระบบ (Enterprise Security Operations Center)</h2>
@@ -68,8 +70,10 @@
           <div class="score-card-inner">
             <div class="score-circle-wrap">
               <div class="score-circle" id="scoreCircle">
-                <span class="score-number" id="scoreNumber">100</span>
-                <span class="score-label" data-i18n="score.label">คะแนนความปลอดภัย</span>
+                <div class="score-circle-inner">
+                  <span class="score-number" id="scoreNumber">100</span>
+                  <span class="score-label" data-i18n="score.label">คะแนนความปลอดภัย</span>
+                </div>
               </div>
             </div>
             <div class="score-content">

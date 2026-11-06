@@ -56,13 +56,144 @@ function apiUrl(path) {
   return apiBase + "/api/v1/" + path.replace(/^\/+/, "");
 }
 
-async function authenticatedApiFetch(path, options = {}) {
+async function fetchWithTimeout(resource, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: options.signal || controller.signal
+    });
+    return response;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("การเชื่อมต่อหมดเวลา (Request Timeout เกิน " + (timeoutMs / 1000) + " วินาที)");
+    }
+    throw error;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+export function showToast(message, type = "info", duration = 4000) {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = "toast-message " + (type || "info");
+
+  const iconMap = {
+    success: "🛡️",
+    warning: "⚠️",
+    danger: "🚨",
+    info: "ℹ️"
+  };
+  const icon = document.createElement("span");
+  icon.className = "toast-icon";
+  icon.textContent = iconMap[type] || "ℹ️";
+
+  const body = document.createElement("div");
+  body.className = "toast-body";
+  body.textContent = message;
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "toast-close";
+  closeBtn.textContent = "✕";
+  closeBtn.setAttribute("aria-label", "Close");
+  closeBtn.addEventListener("click", () => dismissToast(toast));
+
+  toast.append(icon, body, closeBtn);
+  container.append(toast);
+
+  if (duration > 0) {
+    setTimeout(() => dismissToast(toast), duration);
+  }
+}
+
+function dismissToast(toast) {
+  if (!toast || toast.classList.contains("toast-out")) return;
+  toast.classList.add("toast-out");
+  setTimeout(() => {
+    if (toast.parentElement) toast.remove();
+  }, 260);
+}
+
+let currentDisplayScore = 100;
+function animateScoreCount(targetScore) {
+  const scoreNumber = document.getElementById("scoreNumber");
+  const scoreCircle = document.getElementById("scoreCircle");
+  if (!scoreNumber) return;
+
+  targetScore = Math.max(0, Math.min(100, Math.round(targetScore)));
+  if (scoreCircle) {
+    scoreCircle.style.setProperty("--score-pct", String(targetScore));
+  }
+
+  const startScore = currentDisplayScore;
+  const diff = targetScore - startScore;
+  if (diff === 0) {
+    scoreNumber.textContent = String(targetScore);
+    return;
+  }
+
+  const duration = 500;
+  const startTime = performance.now();
+
+  function update(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(1, elapsed / duration);
+    const ease = 1 - (1 - progress) * (1 - progress);
+    const val = Math.round(startScore + diff * ease);
+    scoreNumber.textContent = String(val);
+
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    } else {
+      currentDisplayScore = targetScore;
+      scoreNumber.textContent = String(targetScore);
+    }
+  }
+  requestAnimationFrame(update);
+}
+
+async function copyToClipboard(text, buttonElement) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    if (buttonElement) {
+      buttonElement.classList.add("copied");
+      const origText = buttonElement.textContent;
+      buttonElement.textContent = "✓ คัดลอกแล้ว";
+      setTimeout(() => {
+        buttonElement.classList.remove("copied");
+        buttonElement.textContent = origText;
+      }, 2000);
+    }
+    showToast("คัดลอกลงคลิปบอร์ดเรียบร้อยแล้ว", "success", 2500);
+  } catch (err) {
+    showToast("ไม่สามารถคัดลอกได้: " + err.message, "warning", 3000);
+  }
+}
+
+async function authenticatedApiFetch(path, options = {}, timeoutMs = 15000) {
   const user = auth.currentUser;
   if (!user) throw new Error("กรุณาเข้าสู่ระบบก่อนเชื่อมต่อ Backend");
   const token = await user.getIdToken();
   const headers = new Headers(options.headers || {});
   headers.set("Authorization", "Bearer " + token);
-  return fetch(apiUrl(path), { ...options, headers });
+  return fetchWithTimeout(apiUrl(path), { ...options, headers }, timeoutMs);
 }
 
 let currentActiveView = "dashboard";
@@ -370,6 +501,8 @@ if (btnScanHardware) {
   btnScanHardware.addEventListener("click", async () => {
     btnScanHardware.disabled = true;
     btnScanHardware.textContent = "⚡ กำลังสแกนฮาร์ดแวร์จริงในเครื่อง...";
+    const wifiCard = btnScanHardware.closest(".card");
+    if (wifiCard) wifiCard.classList.add("scanner-radar-line");
     const badge = document.getElementById("wifiScanningBadge");
     if (badge) {
       badge.textContent = "กำลังอ่านข้อมูลการ์ด Wi-Fi...";
@@ -378,7 +511,7 @@ if (btnScanHardware) {
 
     try {
       const endpoint = apiBase ? `${apiBase}/api/wifi/scan-live` : "/api/wifi/scan-live";
-      const res = await fetch(endpoint, { cache: "no-store" });
+      const res = await fetchWithTimeout(endpoint, { cache: "no-store" }, 15000);
       if (!res.ok) {
         throw new Error("เซิร์ฟเวอร์ตอบกลับสถานะ HTTP " + res.status);
       }
@@ -412,7 +545,7 @@ if (btnScanHardware) {
         badge.textContent = `พบ ${networks.length} เครือข่ายจริง`;
         badge.className = "lock-tag secure";
       }
-      window.alert(`✅ สแกนสำเร็จ! ตรวจพบสัญญาณ Wi-Fi จริงรอบตัวทั้งหมด ${networks.length} เครือข่าย\n(เชื่อมต่ออยู่กับ: ${data.connected ? data.connected.ssid : 'ไม่ได้เชื่อมต่อ'})`);
+      showToast(`สแกนสำเร็จ! ตรวจพบสัญญาณ Wi-Fi จริงรอบตัวทั้งหมด ${networks.length} เครือข่าย (เชื่อมต่อ: ${data.connected ? data.connected.ssid : 'ไม่ได้เชื่อมต่อ'})`, "success", 5000);
     } catch (err) {
       if (badge) {
         badge.textContent = "สแกนไม่สำเร็จ";
@@ -431,9 +564,10 @@ if (btnScanHardware) {
           }
         }
       } else {
-        window.alert(`ไม่สามารถสแกน Wi-Fi จริงจากเครื่องได้: ${err.message}\n(กรุณาดับเบิลคลิกไฟล์ run-app.bat หรือ run-desktop.bat เพื่อเปิดโหมด Desktop App)`);
+        showToast(`ไม่สามารถสแกน Wi-Fi จริงจากเครื่องได้: ${err.message} (กรุณารันผ่าน run-app.bat หรือเปิดโหมด Desktop)`, "warning", 6000);
       }
     } finally {
+      if (wifiCard) wifiCard.classList.remove("scanner-radar-line");
       btnScanHardware.disabled = false;
       btnScanHardware.textContent = "⚡ สแกน Wi-Fi จริงจากเครื่องนี้";
     }
@@ -445,6 +579,8 @@ if (btnScanLive) {
   btnScanLive.addEventListener("click", () => {
     btnScanLive.disabled = true;
     btnScanLive.textContent = "🔄 กำลังค้นหาสัญญาณรอบข้าง...";
+    const wifiCard = btnScanLive.closest(".card");
+    if (wifiCard) wifiCard.classList.add("scanner-radar-line");
     const badge = document.getElementById("wifiScanningBadge");
     if (badge) {
       badge.textContent = "กำลังค้นหา...";
@@ -452,6 +588,7 @@ if (btnScanLive) {
     }
 
     setTimeout(() => {
+      if (wifiCard) wifiCard.classList.remove("scanner-radar-line");
       btnScanLive.disabled = false;
       btnScanLive.textContent = "📡 จำลองสัญญาณ (Demo)";
       if (badge) {
@@ -517,9 +654,9 @@ if (btnTriggerUpload && fileInput) {
 
       renderWifiList(networks);
       selectWifiNetwork(networks[0]);
-      window.alert("นำเข้ารายงาน Wi-Fi สำเร็จ! ตรวจพบ " + networks.length + " เครือข่าย");
+      showToast("นำเข้ารายงาน Wi-Fi สำเร็จ! ตรวจพบ " + networks.length + " เครือข่าย", "success", 4000);
     } catch (err) {
-      window.alert("อ่านไฟล์ไม่สำเร็จ: " + err.message);
+      showToast("อ่านไฟล์ไม่สำเร็จ: " + err.message, "danger", 5000);
     }
   });
 }
@@ -729,12 +866,15 @@ function calculateSecurityScore() {
   const printStatus = document.getElementById("printStatus");
 
   if (state.scans === 0) {
-    if (scoreNumber) scoreNumber.textContent = "100";
+    if (scoreNumber) animateScoreCount(100);
     if (scoreBadge) {
       scoreBadge.className = "score-badge safe";
       scoreBadge.textContent = t("score.grade.ready", "เกรด A+ · พร้อมใช้งาน");
     }
-    if (scoreCircle) scoreCircle.className = "score-circle";
+    if (scoreCircle) {
+      scoreCircle.className = "score-circle";
+      scoreCircle.style.setProperty("--score-pct", "100");
+    }
     if (scoreTitle) scoreTitle.textContent = t("score.title.ready", "ระบบปลอดภัย ไม่พบช่องโหว่ความเสี่ยงสูง");
     if (scoreDesc) scoreDesc.textContent = t("score.desc.ready", "ระบบพร้อมสำหรับการตรวจสอบความปลอดภัย เริ่มต้นสแกน Wi-Fi, ซอร์สโค้ด, ไวรัส หรือ Dependency เพื่อประเมินสถานะ");
     if (printScore) printScore.textContent = `100 / 100 (${t("score.grade.ready", "เกรด A+")})`;
@@ -785,13 +925,14 @@ function calculateSecurityScore() {
     statusText = t("score.status.good", "ความปลอดภัยดี (Good)");
   }
 
-  if (scoreNumber) scoreNumber.textContent = String(score);
+  if (scoreNumber) animateScoreCount(score);
   if (scoreBadge) {
     scoreBadge.className = `score-badge ${statusClass}`;
     scoreBadge.textContent = gradeText;
   }
   if (scoreCircle) {
     scoreCircle.className = `score-circle ${statusClass === "safe" ? "" : statusClass}`.trim();
+    scoreCircle.style.setProperty("--score-pct", String(score));
   }
   if (scoreTitle) scoreTitle.textContent = title;
   if (scoreDesc) scoreDesc.textContent = desc;
@@ -900,6 +1041,16 @@ function finishScan(kind, findings, target) {
   renderHistory();
   calculateSecurityScore();
   saveStateToStorage();
+
+  const scanTitle = titles[kind] || (kind.startsWith("virus") ? "สแกนไวรัส" : kind.startsWith("wifi") ? "ตรวจสอบ Wi-Fi" : kind === "website-headers" ? "ตรวจเว็บไซต์" : kind === "local-code-review" ? "วิเคราะห์ซอร์สโค้ด" : kind === "npm-dependency-audit" ? "ตรวจสอบ Dependency" : kind);
+  const highCount = findings.filter((item) => item.level === "high").length;
+  if (highCount > 0) {
+    showToast(`🚨 ตรวจเสร็จสิ้น (${scanTitle}): พบความเสี่ยงสูง ${highCount} รายการ`, "danger");
+  } else if (flagged.length > 0) {
+    showToast(`⚠️ ตรวจเสร็จสิ้น (${scanTitle}): พบข้อควรระวัง ${flagged.length} รายการ`, "warning");
+  } else {
+    showToast(`🛡️ ตรวจเสร็จสิ้น (${scanTitle}): ไม่พบช่องโหว่ความเสี่ยงสูง`, "success");
+  }
 }
 
 function updateServiceStatus(id, ready, label) {
@@ -1055,7 +1206,7 @@ async function pollVirusJob(job) {
 
 function exportReport() {
   if (!state.last) {
-    alert("ยังไม่มีผลการตรวจสำหรับส่งออก");
+    showToast("ยังไม่มีผลการตรวจสำหรับส่งออก", "warning", 3500);
     return;
   }
   const report = {
@@ -1341,6 +1492,8 @@ document.getElementById("websiteForm").addEventListener("submit", async (event) 
     renderFindings(output, [{ level: "info", title: "URL ไม่รองรับ", detail: "อนุญาตเฉพาะ URL แบบ HTTP/HTTPS ที่ไม่มีข้อมูลรับรองฝังอยู่ใน URL" }]);
     return;
   }
+  const formCard = event.currentTarget.closest(".card");
+  if (formCard) formCard.classList.add("scanner-radar-line");
   button.disabled = true;
   button.textContent = "กำลังตรวจ...";
   const findings = [];
@@ -1475,6 +1628,7 @@ document.getElementById("websiteForm").addEventListener("submit", async (event) 
       finishScan("website-headers", failedFindings, target.href);
     }
   } finally {
+    if (formCard) formCard.classList.remove("scanner-radar-line");
     window.clearTimeout(timeout);
     button.disabled = false;
     button.textContent = "เริ่มตรวจแบบ Passive";
@@ -1533,8 +1687,11 @@ document.getElementById("codeForm").addEventListener("submit", async (event) => 
   if (findings.length === 0) {
     findings.push({ level: "info", title: "ไม่พบรูปแบบที่ตรงกับกฎพื้นฐาน", detail: "ตรวจแล้ว " + sources.length + " แหล่งข้อมูล ผลนี้ไม่ใช่การยืนยันว่าโค้ดปลอดภัย" });
   }
+  const codeCard = event.currentTarget.closest(".card");
+  if (codeCard) codeCard.classList.add("scanner-radar-line");
   renderFindings(output, findings);
   finishScan("local-code-review", findings, sources.map((source) => source.name).join(", "));
+  if (codeCard) codeCard.classList.remove("scanner-radar-line");
 });
 
 function exactVersion(version) {
@@ -1614,6 +1771,8 @@ async function readDependencyFile(file) {
 
 async function queryOsvBatch(rawDependencies, output, scanTarget, button) {
   const originalText = button ? button.textContent : "";
+  const card = output ? output.closest(".card") : null;
+  if (card) card.classList.add("scanner-radar-line");
   if (button) {
     button.disabled = true;
     button.textContent = "กำลังค้นหาใน OSV...";
@@ -1637,7 +1796,7 @@ async function queryOsvBatch(rawDependencies, output, scanTarget, button) {
     const findings = [];
     for (let offset = 0; offset < exact.length; offset += 1000) {
       const batch = exact.slice(offset, offset + 1000);
-      const response = await fetch("https://api.osv.dev/v1/querybatch", {
+      const response = await fetchWithTimeout("https://api.osv.dev/v1/querybatch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1646,7 +1805,7 @@ async function queryOsvBatch(rawDependencies, output, scanTarget, button) {
             version: dep.version.replace(/^v/, "")
           }))
         })
-      });
+      }, 15000);
 
       if (!response.ok) throw new Error("OSV API ตอบกลับ HTTP " + response.status);
       const data = await response.json();
@@ -1693,6 +1852,7 @@ async function queryOsvBatch(rawDependencies, output, scanTarget, button) {
     renderFindings(output, findings);
     finishScan("npm-dependency-audit", findings, scanTarget);
   } finally {
+    if (card) card.classList.remove("scanner-radar-line");
     if (button) {
       button.disabled = false;
       button.textContent = originalText;
@@ -2288,10 +2448,22 @@ function appendAiMessage(role, title, text, code = null, steps = []) {
   }
 
   if (code) {
+    const wrap = document.createElement("div");
+    wrap.className = "code-block-wrap";
+
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "copy-snippet-btn";
+    copyBtn.textContent = "📋 คัดลอก";
+    copyBtn.setAttribute("aria-label", "คัดลอกโค้ด");
+    copyBtn.addEventListener("click", () => copyToClipboard(code, copyBtn));
+
     const pre = document.createElement("pre");
     pre.className = "ai-code-block";
     pre.textContent = code;
-    content.append(pre);
+
+    wrap.append(copyBtn, pre);
+    content.append(wrap);
   }
 
   bubble.append(avatar, content);
