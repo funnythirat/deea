@@ -180,27 +180,141 @@ input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(85, 230, 208
   margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line);
   color: #849188; font-size: 10px; line-height: 1.65;
 }
-@media (max-width: 900px) {
-  .auth-layout { grid-template-columns: minmax(0, .9fr) minmax(380px, 1fr); }
-  .welcome-panel { padding-right: 34px; padding-left: 34px; }
-  .auth-side { padding-right: 28px; padding-left: 28px; }
-  .feature-list { grid-template-columns: 1fr; gap: 8px; }
-  .feature { min-height: 0; flex-direction: row; align-items: center; gap: 10px; padding: 10px 12px; }
-  .feature-icon { width: 32px; height: 32px; flex: 0 0 32px; }
+/* ========================================================
+   COMPREHENSIVE RESPONSIVE DESIGN SYSTEM (LOGIN PAGE)
+   Targets: Desktop PCs, Laptops, iPads/Tablets, Mobile Phones
+   ======================================================== */
+
+/* Tablet & iPad Portrait / Medium Screens (681px - 960px) */
+@media (max-width: 960px) and (min-width: 681px) {
+  .auth-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  .welcome-panel {
+    min-height: auto;
+    padding: 28px 36px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .welcome-copy {
+    padding: 20px 0;
+    max-width: 100%;
+    margin: 0;
+  }
+  .welcome-copy h1 {
+    font-size: clamp(26px, 4.5vw, 38px);
+    letter-spacing: -1px;
+  }
+  .welcome-copy p {
+    max-width: 100%;
+    font-size: 13.5px;
+  }
+  .feature-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .feature {
+    min-height: auto;
+    padding: 12px 14px;
+    font-size: 11.5px;
+  }
+  .auth-side {
+    flex: 1;
+    min-height: auto;
+    padding: 40px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-card {
+    width: min(100%, 450px);
+    padding: 32px 28px;
+  }
+  .mobile-brand {
+    display: none;
+  }
 }
-@media (max-width: 700px) {
-  .auth-layout { display: block; }
-  .welcome-panel { min-height: auto; padding: 22px 22px 18px; border-right: 0; border-bottom: 1px solid var(--line); }
-  .welcome-copy { display: none; }
-  .welcome-footer { display: none; }
-  .auth-side { min-height: calc(100vh - 84px); padding: 34px 20px; }
-  .mobile-brand { display: block; margin-bottom: 24px; }
-  .mobile-brand .brand { margin-bottom: 0; }
-  .auth-emblem { display: none; }
+
+/* Mobile Phones (< 680px) */
+@media (max-width: 680px) {
+  .auth-layout {
+    display: block;
+    min-height: 100vh;
+  }
+  .welcome-panel {
+    display: none;
+  }
+  .auth-side {
+    min-height: 100vh;
+    padding: 24px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  .mobile-brand {
+    display: block;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  .mobile-brand .brand {
+    justify-content: center;
+    margin-bottom: 0;
+  }
+  .auth-emblem {
+    display: none;
+  }
+  .login-card {
+    width: min(100%, 420px);
+    padding: 24px 18px;
+    border-radius: 16px;
+    box-sizing: border-box;
+  }
+  .auth-heading {
+    font-size: 24px;
+  }
+  .intro {
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin-bottom: 18px;
+  }
+  /* Prevent iOS Safari Auto-Zoom */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    font-size: 16px !important;
+    min-height: 48px;
+  }
+  .auth-switch button {
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .btn {
+    min-height: 48px;
+    font-size: 14px;
+    font-weight: 750;
+  }
+  .login-card-header .lang-select {
+    min-height: 38px;
+    font-size: 13px;
+  }
 }
-@media (max-width: 380px) {
-  .welcome-panel { padding-right: 16px; padding-left: 16px; }
-  .auth-side { padding-right: 16px; padding-left: 16px; }
+
+/* Small Phones (≤ 360px) */
+@media (max-width: 360px) {
+  .auth-side {
+    padding: 16px 10px;
+  }
+  .login-card {
+    padding: 18px 14px;
+  }
+  .auth-heading {
+    font-size: 21px;
+  }
 }
 
 /* Toast Container & Message for Login */
