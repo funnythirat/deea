@@ -87,7 +87,7 @@ try {
     event.preventDefault();
     const button = document.getElementById("loginButton");
     button.disabled = true;
-    button.textContent = "กำลังเข้าสู่ระบบ...";
+    button.textContent = t("login.signingIn", "กำลังเข้าสู่ระบบ...");
     try {
       await signInWithEmailAndPassword(
         auth,
@@ -98,7 +98,7 @@ try {
       displayAuthError(error);
     } finally {
       button.disabled = false;
-      button.textContent = "เข้าสู่ระบบ";
+      button.textContent = t("login.btnSignin", "เข้าสู่ระบบ");
     }
   });
 
@@ -107,13 +107,13 @@ try {
     const password = document.getElementById("createPassword").value;
     const passwordConfirm = document.getElementById("createPasswordConfirm").value;
     if (password !== passwordConfirm) {
-      setAuthMessage("รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน", "error");
+      setAuthMessage(t("login.passwordMismatch", "รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน"), "error");
       document.getElementById("createPasswordConfirm").focus();
       return;
     }
     const button = document.getElementById("createAccountButton");
     button.disabled = true;
-    button.textContent = "กำลังสร้างบัญชี...";
+    button.textContent = t("login.signingUp", "กำลังสร้างบัญชี...");
     try {
       await createUserWithEmailAndPassword(
         auth,
@@ -124,7 +124,7 @@ try {
       displayAuthError(error);
     } finally {
       button.disabled = false;
-      button.textContent = "สมัครบัญชีใหม่";
+      button.textContent = t("login.btnSignup", "สมัครบัญชีใหม่");
     }
   });
 } catch (error) {

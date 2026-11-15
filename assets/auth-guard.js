@@ -1,5 +1,7 @@
 import { getApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { showToast } from "./app.js";
+import { t } from "./i18n.js";
 
 const appShell = document.getElementById("appShell");
 try {
@@ -24,7 +26,7 @@ try {
     } catch (error) {
       console.error("Firebase sign-out failed.", error);
       button.disabled = false;
-      window.alert("ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง");
+      showToast(t("auth.signOutFailed", "ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง"), "danger");
     }
   });
 } catch (error) {

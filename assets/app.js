@@ -51,6 +51,18 @@ const apiBase = isLocalBackend
 const LEGACY_WIFI_AUTHENTICATION = ["SHARED", "WPA-NONE"];
 const WPA1_AUTHENTICATION = ["WPA", "WPA-PSK", "WPA-PERSONAL", "WPA-ENTERPRISE"];
 
+export function getAppLocale() {
+  const lang = typeof getLanguage === "function" ? getLanguage() : "th";
+  const map = {
+    th: "th-TH",
+    en: "en-US",
+    zh: "zh-CN",
+    ja: "ja-JP",
+    es: "es-ES"
+  };
+  return map[lang] || "th-TH";
+}
+
 function apiUrl(path) {
   if (!apiBase) return null;
   return apiBase + "/api/v1/" + path.replace(/^\/+/, "");
@@ -175,15 +187,15 @@ async function copyToClipboard(text, buttonElement) {
     if (buttonElement) {
       buttonElement.classList.add("copied");
       const origText = buttonElement.textContent;
-      buttonElement.textContent = "✓ คัดลอกแล้ว";
+      buttonElement.textContent = t("code.copied", "✓ คัดลอกแล้ว");
       setTimeout(() => {
         buttonElement.classList.remove("copied");
         buttonElement.textContent = origText;
       }, 2000);
     }
-    showToast("คัดลอกลงคลิปบอร์ดเรียบร้อยแล้ว", "success", 2500);
+    showToast(t("code.copiedToast", "คัดลอกลงคลิปบอร์ดเรียบร้อยแล้ว"), "success", 2500);
   } catch (err) {
-    showToast("ไม่สามารถคัดลอกได้: " + err.message, "warning", 3000);
+    showToast(t("code.copyFail", "ไม่สามารถคัดลอกได้: ") + err.message, "warning", 3000);
   }
 }
 
@@ -410,9 +422,13 @@ function selectWifiNetwork(network) {
 
   const passEl = document.getElementById("wifiPropPassword");
   if (passEl) {
-    passEl.innerHTML = ev.hasPassword
-      ? '<span style="color:#4ade80;">🔒 มีรหัสผ่าน (' + ev.auth + ')</span>'
-      : '<span style="color:#f87171;">🔓 ไม่มีรหัสผ่าน (อันตราย)</span>';
+    passEl.textContent = "";
+    const span = document.createElement("span");
+    span.className = "lock-tag " + (ev.hasPassword ? "secure" : "danger");
+    span.textContent = ev.hasPassword
+      ? "🔒 มีรหัสผ่าน (" + ev.auth + ")"
+      : "🔓 ไม่มีรหัสผ่าน (อันตราย)";
+    passEl.append(span);
   }
 
   const sigEl = document.getElementById("wifiPropSignal");
@@ -447,7 +463,7 @@ function selectWifiNetwork(network) {
     document.getElementById("wifiSignalText").textContent = network.signalQualityPercent + "%";
     document.getElementById("wifiAuthentication").textContent = ev.auth;
     document.getElementById("wifiCipher").textContent = ev.cipher;
-    document.getElementById("wifiCapturedAt").textContent = new Date(network.capturedAtUtc || Date.now()).toLocaleString("th-TH");
+    document.getElementById("wifiCapturedAt").textContent = new Date(network.capturedAtUtc || Date.now()).toLocaleString(getAppLocale());
   }
 }
 
@@ -657,6 +673,8 @@ if (btnTriggerUpload && fileInput) {
       showToast("นำเข้ารายงาน Wi-Fi สำเร็จ! ตรวจพบ " + networks.length + " เครือข่าย", "success", 4000);
     } catch (err) {
       showToast("อ่านไฟล์ไม่สำเร็จ: " + err.message, "danger", 5000);
+    } finally {
+      fileInput.value = "";
     }
   });
 }
@@ -674,7 +692,8 @@ document.getElementById("localVirusReportForm").addEventListener("submit", async
   event.preventDefault();
   const output = document.getElementById("localVirusScanResults");
   const summary = document.getElementById("localVirusSummary");
-  const file = document.getElementById("localVirusReportFile").files[0];
+  const fileInput = document.getElementById("localVirusReportFile");
+  const file = fileInput ? fileInput.files[0] : null;
   if (!file) return;
 
   try {
@@ -778,6 +797,8 @@ document.getElementById("localVirusReportForm").addEventListener("submit", async
         ? "ไฟล์ไม่ใช่ JSON ที่ถูกต้อง กรุณาเลือก virus-scan-report.json จากตัวช่วย"
         : error.message
     }]);
+  } finally {
+    if (fileInput) fileInput.value = "";
   }
 });
 
@@ -965,7 +986,7 @@ function loadStateFromStorage() {
       if (statFindings) statFindings.textContent = String(state.findings);
       if (statHigh) statHigh.textContent = String(state.high);
       if (statLast && state.last && state.last.completedAt) {
-        statLast.textContent = new Date(state.last.completedAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+        statLast.textContent = new Date(state.last.completedAt).toLocaleTimeString(getAppLocale(), { hour: "2-digit", minute: "2-digit" });
       }
 
       const countHigh = document.getElementById("countHigh");
@@ -1026,7 +1047,7 @@ function finishScan(kind, findings, target) {
   document.getElementById("statScans").textContent = String(state.scans);
   document.getElementById("statFindings").textContent = String(state.findings);
   document.getElementById("statHigh").textContent = String(state.high);
-  document.getElementById("statLast").textContent = new Date(state.last.completedAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  document.getElementById("statLast").textContent = new Date(state.last.completedAt).toLocaleTimeString(getAppLocale(), { hour: "2-digit", minute: "2-digit" });
   const maxSeverity = Math.max(state.high, state.medium, state.low, 1);
   document.getElementById("countHigh").textContent = String(state.high);
   document.getElementById("countMedium").textContent = String(state.medium);
@@ -1297,9 +1318,7 @@ function renderHistory(filterType = currentHistoryFilter, searchQuery = currentS
   });
   head.append(headerRow);
   const body = document.createElement("tbody");
-
-  const currentLang = getLanguage();
-  const localeStr = currentLang === "th" ? "th-TH" : (currentLang === "ja" ? "ja-JP" : (currentLang === "zh" ? "zh-CN" : (currentLang === "es" ? "es-ES" : "en-US")));
+  const localeStr = getAppLocale();
 
   filtered.forEach((scan) => {
     const row = document.createElement("tr");
@@ -1367,7 +1386,7 @@ function renderHistory(filterType = currentHistoryFilter, searchQuery = currentS
 function printSecurityReport() {
   const printDate = document.getElementById("printDate");
   if (printDate) {
-    printDate.textContent = new Date().toLocaleString("th-TH", {
+    printDate.textContent = new Date().toLocaleString(getAppLocale(), {
       dateStyle: "long",
       timeStyle: "medium"
     });
@@ -1442,6 +1461,7 @@ function clearAllHistory() {
 
   renderHistory();
   calculateSecurityScore();
+  showToast(t("reports.cleared", "ล้างประวัติการตรวจสอบทั้งหมดเรียบร้อยแล้ว"), "info");
 }
 
 document.getElementById("exportButton").addEventListener("click", exportReport);
@@ -2405,6 +2425,12 @@ window.addEventListener("languageChanged", () => {
   if (aiInput) {
     aiInput.setAttribute("placeholder", t("ai.inputPlaceholder", "พิมพ์คำถามเรื่องความปลอดภัย หรือระบุจุดบกพร่องที่ต้องการคำแนะนำ..."));
   }
+  if (selectedWifiNetwork) {
+    selectWifiNetwork(selectedWifiNetwork);
+  }
+  if (activeWifiList && activeWifiList.length > 0) {
+    renderWifiList(activeWifiList);
+  }
 });
 
 // --- AI Security Assistant & Remediation Advisor ---
@@ -2454,8 +2480,8 @@ function appendAiMessage(role, title, text, code = null, steps = []) {
     const copyBtn = document.createElement("button");
     copyBtn.type = "button";
     copyBtn.className = "copy-snippet-btn";
-    copyBtn.textContent = "📋 คัดลอก";
-    copyBtn.setAttribute("aria-label", "คัดลอกโค้ด");
+    copyBtn.textContent = t("code.copy", "📋 คัดลอก");
+    copyBtn.setAttribute("aria-label", t("code.copyAria", "คัดลอกโค้ด"));
     copyBtn.addEventListener("click", () => copyToClipboard(code, copyBtn));
 
     const pre = document.createElement("pre");
